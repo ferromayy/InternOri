@@ -49,19 +49,23 @@ export function validateCredentials(username: string, password: string): boolean
   );
 }
 
+const SIG_HEX_LENGTH = 64; // SHA-256 en hex
+
 export async function createSessionToken(username: string): Promise<string> {
   const sig = await hmacHex(username, getSecret());
+  // Separador fijo al final: el email puede contener "." (gmail.com)
   return `${encodeURIComponent(username)}.${sig}`;
 }
 
 export async function verifySessionCookie(value: string | undefined): Promise<string | null> {
   if (!value || !getSecret()) return null;
 
-  const dot = value.indexOf(".");
-  if (dot === -1) return null;
+  if (value.length <= SIG_HEX_LENGTH + 1) return null;
 
-  const encodedUser = value.slice(0, dot);
-  const sig = value.slice(dot + 1);
+  const sig = value.slice(-SIG_HEX_LENGTH);
+  const encodedUser = value.slice(0, -(SIG_HEX_LENGTH + 1));
+  if (!encodedUser || value.charAt(encodedUser.length) !== ".") return null;
+
   const username = decodeURIComponent(encodedUser);
 
   const expected = await hmacHex(username, getSecret());
