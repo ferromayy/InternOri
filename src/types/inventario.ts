@@ -14,7 +14,10 @@ export type CafeVerde = {
   kg_iniciales_gr: number;
   kg_usados_gr: number;
   kg_actuales_gr: number;
+  costo_total_ars: number | null;
+  costo_total_usd: number | null;
   created_at: string;
+  deleted_at: string | null;
 };
 
 export type CafeVerdeParaTostado = {
@@ -37,6 +40,8 @@ export type CafeVerdeInput = {
   lote: string;
   formatos_venta: FormatoVenta[];
   kg_iniciales_gr: number;
+  costo_total_ars?: number | null;
+  costo_total_usd?: number | null;
 };
 
 export type CafeTostado = {
@@ -51,6 +56,7 @@ export type CafeTostado = {
   kg_vendidos_gr: number;
   kg_existentes_gr: number;
   created_at: string;
+  deleted_at: string | null;
 };
 
 export type CafeTostadoInput = {

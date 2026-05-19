@@ -4,6 +4,7 @@ import type { ComponentePackaging } from "@/lib/inventario/packaging";
 
 export type RequisitoProductoTerminado = {
   id: string;
+  packaging_componente_id: string | null;
   componente: ComponentePackaging;
   tipo: string;
   cantidad_stock: number;
@@ -17,6 +18,8 @@ export type FormatoProductoTerminado = {
   kg_tostado_por_unidad_gr: number | null;
   receta_bloqueada: boolean;
   unidades_producidas: number;
+  precio_venta_ars: number | null;
+  precio_venta_usd: number | null;
   requisitos: RequisitoProductoTerminado[];
   kg_tostado_disponible_gr: number;
   puede_producir: boolean;

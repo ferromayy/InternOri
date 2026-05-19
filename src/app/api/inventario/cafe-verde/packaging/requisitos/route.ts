@@ -1,5 +1,4 @@
-import { validatePackagingRequisitoInput } from "@/lib/inventario/packaging";
-import { syncPackagingRequisitosForFormatoId } from "@/lib/inventario/packaging-sync";
+import { validateRequisitoLinkInput } from "@/lib/inventario/packaging-componente";
 import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
 
@@ -11,16 +10,86 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "JSON inválido" }, { status: 400 });
   }
 
-  const parsed = validatePackagingRequisitoInput(body);
+  const parsed = validateRequisitoLinkInput(body);
   if (!parsed.ok) {
     return NextResponse.json({ error: parsed.error }, { status: 400 });
   }
 
   const supabase = await createClient();
+  let packaging_componente_id: string;
+
+  if ("packaging_componente_id" in parsed.data) {
+    packaging_componente_id = parsed.data.packaging_componente_id;
+  } else {
+    const { componente, tipo, cantidad } = parsed.data;
+    const { data: existing } = await supabase
+      .from("packaging_componente")
+      .select("id")
+      .eq("componente", componente)
+      .eq("tipo", tipo)
+      .maybeSingle();
+
+    if (existing?.id) {
+      packaging_componente_id = existing.id;
+      if (cantidad > 0) {
+        const { data: row } = await supabase
+          .from("packaging_componente")
+          .select("cantidad")
+          .eq("id", existing.id)
+          .single();
+        if (row) {
+          await supabase
+            .from("packaging_componente")
+            .update({ cantidad: Number(row.cantidad) + cantidad })
+            .eq("id", existing.id);
+        }
+      }
+    } else {
+      const { data: created, error: createError } = await supabase
+        .from("packaging_componente")
+        .insert({ componente, tipo, cantidad })
+        .select("id")
+        .single();
+
+      if (createError || !created) {
+        return NextResponse.json(
+          { error: createError?.message ?? "No se pudo crear el componente" },
+          { status: 502 },
+        );
+      }
+      packaging_componente_id = created.id;
+    }
+  }
+
+  const { data: componenteRow } = await supabase
+    .from("packaging_componente")
+    .select("componente, tipo, cantidad")
+    .eq("id", packaging_componente_id)
+    .single();
+
+  if (!componenteRow) {
+    return NextResponse.json({ error: "Componente no encontrado" }, { status: 404 });
+  }
+
   const { data, error } = await supabase
     .from("packaging_requisito")
-    .insert(parsed.data)
-    .select("id, componente, tipo, cantidad")
+    .insert({
+      cafe_verde_formato_id: parsed.data.cafe_verde_formato_id,
+      packaging_componente_id,
+      componente: componenteRow.componente,
+      tipo: componenteRow.tipo,
+      cantidad: componenteRow.cantidad,
+    })
+    .select(
+      `
+      id,
+      packaging_componente_id,
+      componente,
+      tipo,
+      cantidad,
+      packaging_componente ( id, componente, tipo, cantidad )
+    `,
+    )
     .single();
 
   if (error) {
@@ -28,14 +97,12 @@ export async function POST(request: Request) {
     return NextResponse.json(
       {
         error: isDuplicate
-          ? "Ya existe ese componente con el mismo tipo para este formato"
+          ? "Este formato ya usa ese componente"
           : error.message,
       },
       { status: isDuplicate ? 409 : 502 },
     );
   }
-
-  await syncPackagingRequisitosForFormatoId(supabase, parsed.data.cafe_verde_formato_id);
 
   return NextResponse.json({ ok: true, requisito: data }, { status: 201 });
 }

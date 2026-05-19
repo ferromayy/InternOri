@@ -1,5 +1,5 @@
 import { CafeVerdeForm } from "@/components/inventario/CafeVerdeForm";
-import { CafeVerdeList } from "@/components/inventario/CafeVerdeList";
+import { CafeVerdeInventario } from "@/components/inventario/CafeVerdeInventario";
 
 export default function CafeVerdePage() {
   return (
@@ -17,7 +17,7 @@ export default function CafeVerdePage() {
 
       <section className="space-y-3">
         <h2 className="text-lg font-medium text-zinc-900 dark:text-zinc-50">Inventario actual</h2>
-        <CafeVerdeList />
+        <CafeVerdeInventario />
       </section>
     </div>
   );

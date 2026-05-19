@@ -15,7 +15,10 @@ const CAFE_VERDE_SELECT = `
   kg_iniciales_gr,
   kg_usados_gr,
   kg_actuales_gr,
+  costo_total_ars,
+  costo_total_usd,
   created_at,
+  deleted_at,
   cafe_verde_formatos_venta ( formato_venta )
 `;
 
@@ -24,6 +27,7 @@ export async function GET() {
   const { data, error } = await supabase
     .from("cafe_verde")
     .select(CAFE_VERDE_SELECT)
+    .is("deleted_at", null)
     .order("fecha_ingreso", { ascending: false });
 
   if (error) {
@@ -51,7 +55,12 @@ export async function POST(request: Request) {
 
   const { data, error } = await supabase
     .from("cafe_verde")
-    .insert({ ...cafeVerde, kg_usados_gr: 0 })
+    .insert({
+      ...cafeVerde,
+      kg_usados_gr: 0,
+      costo_total_ars: cafeVerde.costo_total_ars ?? null,
+      costo_total_usd: cafeVerde.costo_total_usd ?? null,
+    })
     .select("id")
     .single();
 

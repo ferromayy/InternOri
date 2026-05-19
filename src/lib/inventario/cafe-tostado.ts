@@ -41,6 +41,36 @@ export function validateCafeTostadoInput(
   };
 }
 
+export function validateCafeTostadoUpdate(
+  body: unknown,
+): { ok: true; data: Partial<CafeTostadoInput> } | { ok: false; error: string } {
+  if (!body || typeof body !== "object") {
+    return { ok: false, error: "Datos inválidos" };
+  }
+
+  const b = body as Record<string, unknown>;
+  const text = (key: string) => (typeof b[key] === "string" ? b[key].trim() : "");
+  const patch: Partial<CafeTostadoInput> = {};
+
+  if (b.fecha_tueste !== undefined) {
+    const fecha_tueste = text("fecha_tueste");
+    if (!fecha_tueste) return { ok: false, error: "La fecha de tueste es obligatoria" };
+    patch.fecha_tueste = fecha_tueste;
+  }
+
+  if (b.perfil !== undefined) {
+    const perfil = text("perfil");
+    if (!perfil) return { ok: false, error: "El perfil es obligatorio" };
+    patch.perfil = perfil;
+  }
+
+  if (Object.keys(patch).length === 0) {
+    return { ok: false, error: "No hay cambios para guardar" };
+  }
+
+  return { ok: true, data: patch };
+}
+
 export function buildTostadoCodigo(cafeVerdeCodigo: string): string {
   const suffix = Date.now().toString(36).slice(-5).toUpperCase();
   return `T-${cafeVerdeCodigo}-${suffix}`;

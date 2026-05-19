@@ -2,7 +2,7 @@
 
 import { labelComponentePackaging } from "@/lib/inventario/packaging";
 import type { FormatoProductoTerminado, LoteProductoTerminado } from "@/lib/inventario/producto-terminado";
-import { useRouter } from "next/navigation";
+import { useInventarioList } from "@/lib/hooks/use-inventario-list";
 import { FormEvent, useCallback, useEffect, useState } from "react";
 
 const inputClass =
@@ -25,29 +25,17 @@ function recetaFromFormato(formato: FormatoProductoTerminado) {
 }
 
 export function ProductoTerminadoManager() {
-  const router = useRouter();
-  const [lotes, setLotes] = useState<LoteProductoTerminado[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [expandedCodigo, setExpandedCodigo] = useState<string | null>(null);
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const res = await fetch("/api/inventario/producto-terminado");
-      const data = await res.json();
-      if (!res.ok) {
-        setError(data.error ?? "Error al cargar");
-        return;
-      }
-      setLotes(data.lotes ?? []);
-    } catch {
-      setError("Error de red");
-    } finally {
-      setLoading(false);
-    }
+  const fetchLotes = useCallback(async () => {
+    const res = await fetch("/api/inventario/producto-terminado");
+    const data = await res.json();
+    if (!res.ok) return { ok: false as const, error: data.error ?? "Error al cargar" };
+    return { ok: true as const, data: (data.lotes ?? []) as LoteProductoTerminado[] };
   }, []);
+
+  const { items: lotes, initialLoading, refreshing, error, load } =
+    useInventarioList(fetchLotes);
 
   useEffect(() => {
     load();
@@ -56,7 +44,7 @@ export function ProductoTerminadoManager() {
     return () => window.removeEventListener("cafe-verde-updated", onUpdate);
   }, [load]);
 
-  if (loading) return <p className="text-sm text-zinc-500">Cargando…</p>;
+  if (initialLoading) return <p className="text-sm text-zinc-500">Cargando…</p>;
 
   if (error) {
     return (
@@ -69,7 +57,9 @@ export function ProductoTerminadoManager() {
     );
   }
 
-  if (lotes.length === 0) {
+  const lista = lotes ?? [];
+
+  if (lista.length === 0) {
     return (
       <p className="text-sm text-zinc-500">
         Registrá café verde con formatos y packaging en las otras secciones primero.
@@ -79,7 +69,12 @@ export function ProductoTerminadoManager() {
 
   return (
     <div className="space-y-4">
-      {lotes.map((lote) => {
+      {refreshing ? (
+        <p className="text-xs text-zinc-500" aria-live="polite">
+          Actualizando…
+        </p>
+      ) : null}
+      {lista.map((lote) => {
         const recetasDefinidas = lote.formatos.filter((f) => f.receta_bloqueada).length;
         return (
           <div
@@ -111,22 +106,9 @@ export function ProductoTerminadoManager() {
                   Una receta por formato de venta. Después de guardarla podés verla, editarla o registrar
                   producción.
                 </p>
-                <RegistroProduccionLote
-                  lote={lote}
-                  onChanged={() => {
-                    load();
-                    router.refresh();
-                  }}
-                />
+                <RegistroProduccionLote lote={lote} onChanged={load} />
                 {lote.formatos.map((formato) => (
-                  <FormatoPanel
-                    key={formato.id}
-                    formato={formato}
-                    onChanged={() => {
-                      load();
-                      router.refresh();
-                    }}
-                  />
+                  <FormatoPanel key={formato.id} formato={formato} onChanged={load} />
                 ))}
               </div>
             ) : null}

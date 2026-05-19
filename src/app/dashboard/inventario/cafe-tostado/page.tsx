@@ -1,5 +1,5 @@
 import { CafeTostadoForm } from "@/components/inventario/CafeTostadoForm";
-import { CafeTostadoList } from "@/components/inventario/CafeTostadoList";
+import { CafeTostadoInventario } from "@/components/inventario/CafeTostadoInventario";
 
 export default function CafeTostadoPage() {
   return (
@@ -16,7 +16,7 @@ export default function CafeTostadoPage() {
 
       <section className="space-y-3">
         <h2 className="text-lg font-medium text-zinc-900 dark:text-zinc-50">Inventario actual</h2>
-        <CafeTostadoList />
+        <CafeTostadoInventario />
       </section>
     </div>
   );

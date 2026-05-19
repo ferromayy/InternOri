@@ -21,6 +21,7 @@ export function labelComponentePackaging(value: string): string {
 
 export type PackagingRequisito = {
   id: string;
+  packaging_componente_id: string;
   componente: ComponentePackaging;
   tipo: string;
   cantidad: number;

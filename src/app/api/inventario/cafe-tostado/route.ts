@@ -7,8 +7,9 @@ export async function GET() {
   const { data, error } = await supabase
     .from("cafe_tostado")
     .select(
-      "id, codigo, cafe_verde_codigo, fecha_tueste, perfil, kg_verde_tostado_gr, kg_despues_tostar_gr, merma_gr, kg_vendidos_gr, kg_existentes_gr, created_at",
+      "id, codigo, cafe_verde_codigo, fecha_tueste, perfil, kg_verde_tostado_gr, kg_despues_tostar_gr, merma_gr, kg_vendidos_gr, kg_existentes_gr, created_at, deleted_at",
     )
+    .is("deleted_at", null)
     .order("fecha_tueste", { ascending: false });
 
   if (error) {
@@ -44,6 +45,7 @@ export async function POST(request: Request) {
     .from("cafe_verde")
     .select("codigo, kg_iniciales_gr, kg_actuales_gr, kg_usados_gr")
     .eq("codigo", cafe_verde_codigo)
+    .is("deleted_at", null)
     .gt("kg_actuales_gr", 0)
     .maybeSingle();
 

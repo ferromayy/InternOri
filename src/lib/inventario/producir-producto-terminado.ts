@@ -1,19 +1,46 @@
+import { buildConsumosProduccion } from "@/lib/inventario/produccion-consumo";
+import { registrarProduccionHistorial, type OrigenProduccionRegistro } from "@/lib/inventario/produccion-registro";
+import { stockFromRequisitoRow } from "@/lib/inventario/packaging-componente";
+import { getTostadoDisponiblePorCodigos } from "@/lib/inventario/tostado-disponible";
 import type { createClient } from "@/lib/supabase/server";
 
 type Supabase = Awaited<ReturnType<typeof createClient>>;
 
+export type PreciosVentaInput = {
+  precio_venta_ars: number | null;
+  precio_venta_usd: number | null;
+};
+
+export type AplicarProduccionOptions = {
+  precios?: PreciosVentaInput;
+  origen?: OrigenProduccionRegistro;
+};
+
 export type FormatoProduccionRow = {
   id: string;
+  formato_venta: string;
   kg_tostado_por_unidad_gr: number | null;
   receta_bloqueada: boolean;
   unidades_producidas: number;
+  precio_venta_ars?: number | null;
+  precio_venta_usd?: number | null;
   cafe_verde: { codigo: string } | { codigo: string }[] | null;
   packaging_requisito: {
     id: string;
+    packaging_componente_id: string | null;
+    componente: string;
+    tipo: string;
     cantidad: number;
     cantidad_por_unidad: number;
+    packaging_componente?: { cantidad: number } | { cantidad: number }[] | null;
   }[] | null;
 };
+
+type RequisitoProduccion = NonNullable<FormatoProduccionRow["packaging_requisito"]>[number];
+
+function stockRequisito(r: RequisitoProduccion): number {
+  return stockFromRequisitoRow(r);
+}
 
 function cafeVerdeCodigoFromRow(formato: FormatoProduccionRow): string | null {
   const raw = formato.cafe_verde;
@@ -27,16 +54,7 @@ export async function fetchFormatoProduccion(
 ): Promise<{ formato: FormatoProduccionRow } | { error: string }> {
   const { data: formato, error } = await supabase
     .from("cafe_verde_formatos_venta")
-    .select(
-      `
-      id,
-      kg_tostado_por_unidad_gr,
-      receta_bloqueada,
-      unidades_producidas,
-      cafe_verde ( codigo ),
-      packaging_requisito ( id, cantidad, cantidad_por_unidad )
-    `,
-    )
+    .select(FORMATO_PRODUCCION_SELECT)
     .eq("id", cafeVerdeFormatoId)
     .maybeSingle();
 
@@ -45,17 +63,57 @@ export async function fetchFormatoProduccion(
   return { formato: formato as FormatoProduccionRow };
 }
 
+const FORMATO_PRODUCCION_SELECT = `
+  id,
+  formato_venta,
+  kg_tostado_por_unidad_gr,
+  receta_bloqueada,
+  unidades_producidas,
+  precio_venta_ars,
+  precio_venta_usd,
+  cafe_verde ( codigo ),
+  packaging_requisito (
+    id,
+    packaging_componente_id,
+    componente,
+    tipo,
+    cantidad,
+    cantidad_por_unidad,
+    packaging_componente ( cantidad )
+  )
+`;
+
+export async function fetchFormatosProduccion(
+  supabase: Supabase,
+  cafeVerdeFormatoIds: string[],
+): Promise<{ formatos: FormatoProduccionRow[] } | { error: string }> {
+  if (cafeVerdeFormatoIds.length === 0) {
+    return { formatos: [] };
+  }
+
+  const { data, error } = await supabase
+    .from("cafe_verde_formatos_venta")
+    .select(FORMATO_PRODUCCION_SELECT)
+    .in("id", cafeVerdeFormatoIds);
+
+  if (error) return { error: error.message };
+
+  const byId = new Map((data ?? []).map((f) => [f.id, f as FormatoProduccionRow]));
+  const formatos: FormatoProduccionRow[] = [];
+  for (const id of cafeVerdeFormatoIds) {
+    const row = byId.get(id);
+    if (!row) return { error: "Formato no encontrado" };
+    formatos.push(row);
+  }
+  return { formatos };
+}
+
 export async function getTostadoDisponibleGr(
   supabase: Supabase,
   cafeVerdeCodigo: string,
 ): Promise<number> {
-  const { data: tostados } = await supabase
-    .from("cafe_tostado")
-    .select("kg_existentes_gr")
-    .eq("cafe_verde_codigo", cafeVerdeCodigo)
-    .gt("kg_existentes_gr", 0);
-
-  return (tostados ?? []).reduce((s, t) => s + Number(t.kg_existentes_gr), 0);
+  const map = await getTostadoDisponiblePorCodigos(supabase, [cafeVerdeCodigo]);
+  return map[cafeVerdeCodigo] ?? 0;
 }
 
 export function validarProduccionFormato(
@@ -82,9 +140,10 @@ export function validarProduccionFormato(
   if (delta > 0) {
     for (const r of requisitos) {
       const necesario = Number(r.cantidad_por_unidad) * delta;
-      if (Number(r.cantidad) < necesario) {
+      const stock = stockRequisito(r);
+      if (stock < necesario) {
         return {
-          error: `Stock insuficiente de packaging (hay ${r.cantidad}, se necesitan ${necesario})`,
+          error: `Stock insuficiente de packaging (hay ${stock}, se necesitan ${necesario})`,
         };
       }
     }
@@ -108,7 +167,10 @@ export async function aplicarProduccionFormato(
   supabase: Supabase,
   formato: FormatoProduccionRow,
   delta: number,
+  options?: AplicarProduccionOptions,
 ): Promise<{ ok: true; unidades_producidas: number } | { error: string }> {
+  const precios = options?.precios;
+  const origen = options?.origen ?? "individual";
   const cafeVerdeCodigo = cafeVerdeCodigoFromRow(formato);
   if (!cafeVerdeCodigo) return { error: "Café verde no encontrado" };
 
@@ -123,6 +185,7 @@ export async function aplicarProduccionFormato(
       .from("cafe_tostado")
       .select("id, kg_existentes_gr, kg_vendidos_gr")
       .eq("cafe_verde_codigo", cafeVerdeCodigo)
+      .is("deleted_at", null)
       .gt("kg_existentes_gr", 0)
       .order("fecha_tueste", { ascending: true });
 
@@ -137,13 +200,30 @@ export async function aplicarProduccionFormato(
       restante -= usar;
     }
 
+    const updatedComponentes = new Set<string>();
     for (const r of requisitos) {
-      const nuevaCantidad = Number(r.cantidad) - Number(r.cantidad_por_unidad) * delta;
-      const { error } = await supabase
-        .from("packaging_requisito")
-        .update({ cantidad: nuevaCantidad })
-        .eq("id", r.id);
-      if (error) return { error: error.message };
+      const stock = stockRequisito(r);
+      const nuevaCantidad = stock - Number(r.cantidad_por_unidad) * delta;
+      if (r.packaging_componente_id) {
+        if (!updatedComponentes.has(r.packaging_componente_id)) {
+          const { error } = await supabase
+            .from("packaging_componente")
+            .update({ cantidad: nuevaCantidad })
+            .eq("id", r.packaging_componente_id);
+          if (error) return { error: error.message };
+          updatedComponentes.add(r.packaging_componente_id);
+        }
+        await supabase
+          .from("packaging_requisito")
+          .update({ cantidad: nuevaCantidad })
+          .eq("packaging_componente_id", r.packaging_componente_id);
+      } else {
+        const { error } = await supabase
+          .from("packaging_requisito")
+          .update({ cantidad: nuevaCantidad })
+          .eq("id", r.id);
+        if (error) return { error: error.message };
+      }
     }
   } else if (delta < 0) {
     const devolver = Math.abs(delta);
@@ -153,6 +233,7 @@ export async function aplicarProduccionFormato(
       .from("cafe_tostado")
       .select("id, kg_vendidos_gr")
       .eq("cafe_verde_codigo", cafeVerdeCodigo)
+      .is("deleted_at", null)
       .order("fecha_tueste", { ascending: false });
 
     for (const t of tostados ?? []) {
@@ -168,20 +249,47 @@ export async function aplicarProduccionFormato(
       restanteTostado -= devolverAqui;
     }
 
+    const updatedComponentes = new Set<string>();
     for (const r of requisitos) {
-      const nuevaCantidad = Number(r.cantidad) + Number(r.cantidad_por_unidad) * devolver;
-      const { error } = await supabase
-        .from("packaging_requisito")
-        .update({ cantidad: nuevaCantidad })
-        .eq("id", r.id);
-      if (error) return { error: error.message };
+      const stock = stockRequisito(r);
+      const nuevaCantidad = stock + Number(r.cantidad_por_unidad) * devolver;
+      if (r.packaging_componente_id) {
+        if (!updatedComponentes.has(r.packaging_componente_id)) {
+          const { error } = await supabase
+            .from("packaging_componente")
+            .update({ cantidad: nuevaCantidad })
+            .eq("id", r.packaging_componente_id);
+          if (error) return { error: error.message };
+          updatedComponentes.add(r.packaging_componente_id);
+        }
+        await supabase
+          .from("packaging_requisito")
+          .update({ cantidad: nuevaCantidad })
+          .eq("packaging_componente_id", r.packaging_componente_id);
+      } else {
+        const { error } = await supabase
+          .from("packaging_requisito")
+          .update({ cantidad: nuevaCantidad })
+          .eq("id", r.id);
+        if (error) return { error: error.message };
+      }
     }
   }
 
   const nuevasUnidades = unidades + delta;
+  const updatePayload: {
+    unidades_producidas: number;
+    precio_venta_ars?: number | null;
+    precio_venta_usd?: number | null;
+  } = { unidades_producidas: nuevasUnidades };
+  if (precios) {
+    updatePayload.precio_venta_ars = precios.precio_venta_ars;
+    updatePayload.precio_venta_usd = precios.precio_venta_usd;
+  }
+
   const { data: updated, error: updateUnidadesError } = await supabase
     .from("cafe_verde_formatos_venta")
-    .update({ unidades_producidas: nuevasUnidades })
+    .update(updatePayload)
     .eq("id", formato.id)
     .select("unidades_producidas")
     .maybeSingle();
@@ -194,7 +302,28 @@ export async function aplicarProduccionFormato(
     };
   }
 
-  return { ok: true, unidades_producidas: Number(updated.unidades_producidas) };
+  const unidades_producidas = Number(updated.unidades_producidas);
+
+  if (delta > 0) {
+    const preciosRegistro: PreciosVentaInput = precios ?? {
+      precio_venta_ars:
+        formato.precio_venta_ars != null ? Number(formato.precio_venta_ars) : null,
+      precio_venta_usd:
+        formato.precio_venta_usd != null ? Number(formato.precio_venta_usd) : null,
+    };
+    const historial = await registrarProduccionHistorial(supabase, {
+      cafe_verde_formato_id: formato.id,
+      cantidad: delta,
+      unidades_totales: unidades_producidas,
+      kg_tostado_usado_gr: kgPorUnidad * delta,
+      origen,
+      precios: preciosRegistro,
+      consumos: buildConsumosProduccion(formato, delta, cafeVerdeCodigo),
+    });
+    if ("error" in historial) return historial;
+  }
+
+  return { ok: true, unidades_producidas };
 }
 
 export async function producirFormato(
@@ -202,6 +331,7 @@ export async function producirFormato(
   cafeVerdeFormatoId: string,
   delta: number,
   tostadoDisponibleOverride?: number,
+  precios?: PreciosVentaInput,
 ): Promise<{ ok: true; unidades_producidas: number } | { error: string }> {
   const fetched = await fetchFormatoProduccion(supabase, cafeVerdeFormatoId);
   if ("error" in fetched) return fetched;
@@ -215,7 +345,10 @@ export async function producirFormato(
   const validacion = validarProduccionFormato(fetched.formato, delta, tostadoDisponible);
   if ("error" in validacion) return validacion;
 
-  const resultado = await aplicarProduccionFormato(supabase, fetched.formato, delta);
+  const resultado = await aplicarProduccionFormato(supabase, fetched.formato, delta, {
+    precios,
+    origen: "individual",
+  });
   return resultado;
 }
 
@@ -243,15 +376,15 @@ export async function producirLote(
     }
   }
 
-  const formatos: FormatoProduccionRow[] = [];
-  for (const item of pendientes) {
-    const fetched = await fetchFormatoProduccion(supabase, item.cafe_verde_formato_id);
-    if ("error" in fetched) return fetched;
-    const itemCodigo = cafeVerdeCodigoFromRow(fetched.formato);
-    if (itemCodigo !== codigo) {
+  const ids = pendientes.map((p) => p.cafe_verde_formato_id);
+  const fetched = await fetchFormatosProduccion(supabase, ids);
+  if ("error" in fetched) return fetched;
+
+  const formatos = fetched.formatos;
+  for (const formato of formatos) {
+    if (cafeVerdeCodigoFromRow(formato) !== codigo) {
       return { error: "Todos los formatos deben pertenecer al mismo ID de café verde" };
     }
-    formatos.push(fetched.formato);
   }
 
   let tostadoRestante = await getTostadoDisponibleGr(supabase, codigo);
@@ -260,7 +393,7 @@ export async function producirLote(
     const validacion = validarProduccionFormato(formatos[i], pendientes[i].cantidad, tostadoRestante);
     if ("error" in validacion) {
       return {
-        error: `${validacion.error} (formato en posición ${i + 1})`,
+        error: `${validacion.error} (${formatos[i].id === pendientes[i].cafe_verde_formato_id ? "revisá cantidades" : "formato inválido"})`,
       };
     }
     const kgPorUnidad = Number(formatos[i].kg_tostado_por_unidad_gr);
@@ -271,14 +404,12 @@ export async function producirLote(
 
   for (let i = 0; i < pendientes.length; i++) {
     const item = pendientes[i];
-    const fetched = await fetchFormatoProduccion(supabase, item.cafe_verde_formato_id);
-    if ("error" in fetched) return fetched;
+    const refetch = await fetchFormatoProduccion(supabase, item.cafe_verde_formato_id);
+    if ("error" in refetch) return refetch;
 
-    const tostadoActual = await getTostadoDisponibleGr(supabase, codigo);
-    const validacion = validarProduccionFormato(fetched.formato, item.cantidad, tostadoActual);
-    if ("error" in validacion) return validacion;
-
-    const aplicado = await aplicarProduccionFormato(supabase, fetched.formato, item.cantidad);
+    const aplicado = await aplicarProduccionFormato(supabase, refetch.formato, item.cantidad, {
+      origen: "lote",
+    });
     if ("error" in aplicado) return aplicado;
 
     resultados.push({

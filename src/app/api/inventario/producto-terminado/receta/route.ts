@@ -69,16 +69,19 @@ export async function POST(request: Request) {
     );
   }
 
-  for (const req of requisitos) {
-    const { error } = await supabase
-      .from("packaging_requisito")
-      .update({ cantidad_por_unidad: req.cantidad_por_unidad })
-      .eq("id", req.id)
-      .eq("cafe_verde_formato_id", cafe_verde_formato_id);
+  const updates = await Promise.all(
+    requisitos.map((req) =>
+      supabase
+        .from("packaging_requisito")
+        .update({ cantidad_por_unidad: req.cantidad_por_unidad })
+        .eq("id", req.id)
+        .eq("cafe_verde_formato_id", cafe_verde_formato_id),
+    ),
+  );
 
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 502 });
-    }
+  const failed = updates.find((r) => r.error);
+  if (failed?.error) {
+    return NextResponse.json({ error: failed.error.message }, { status: 502 });
   }
 
   return NextResponse.json({ ok: true });

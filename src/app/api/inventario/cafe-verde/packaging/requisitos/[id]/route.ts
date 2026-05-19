@@ -19,14 +19,37 @@ export async function PATCH(
   }
 
   const supabase = await createClient();
-  const { error } = await supabase
+
+  const { data: requisito, error: reqError } = await supabase
     .from("packaging_requisito")
+    .select("packaging_componente_id")
+    .eq("id", id)
+    .maybeSingle();
+
+  if (reqError) {
+    return NextResponse.json({ error: reqError.message }, { status: 502 });
+  }
+
+  if (!requisito?.packaging_componente_id) {
+    return NextResponse.json(
+      { error: "Ejecutá 011_packaging_componente_catalogo.sql en Supabase" },
+      { status: 502 },
+    );
+  }
+
+  const { error } = await supabase
+    .from("packaging_componente")
     .update({ cantidad })
-    .eq("id", id);
+    .eq("id", requisito.packaging_componente_id);
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 502 });
   }
+
+  await supabase
+    .from("packaging_requisito")
+    .update({ cantidad })
+    .eq("packaging_componente_id", requisito.packaging_componente_id);
 
   return NextResponse.json({ ok: true });
 }

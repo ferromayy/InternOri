@@ -1,10 +1,11 @@
 import { labelFormatoVenta } from "@/lib/inventario/formato-venta";
-import { syncPackagingRequisitosForCodigo } from "@/lib/inventario/packaging-sync";
+import { stockFromRequisitoRow } from "@/lib/inventario/packaging-componente";
 import {
   puedeProducirUnidad,
   type FormatoProductoTerminado,
   type LoteProductoTerminado,
 } from "@/lib/inventario/producto-terminado";
+import { getTostadoDisponiblePorCodigos } from "@/lib/inventario/tostado-disponible";
 import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
 
@@ -14,12 +15,16 @@ type FormatoRow = {
   kg_tostado_por_unidad_gr: number | null;
   receta_bloqueada: boolean;
   unidades_producidas: number;
+  precio_venta_ars: number | null;
+  precio_venta_usd: number | null;
   packaging_requisito: {
     id: string;
+    packaging_componente_id: string | null;
     componente: string;
     tipo: string;
     cantidad: number;
     cantidad_por_unidad: number;
+    packaging_componente: { cantidad: number } | { cantidad: number }[] | null;
   }[] | null;
 };
 
@@ -29,18 +34,6 @@ type CafeVerdeRow = {
   cafe_verde_formatos_venta: FormatoRow[] | null;
 };
 
-async function getTostadoDisponible(
-  supabase: Awaited<ReturnType<typeof createClient>>,
-  cafeVerdeCodigo: string,
-) {
-  const { data } = await supabase
-    .from("cafe_tostado")
-    .select("kg_existentes_gr")
-    .eq("cafe_verde_codigo", cafeVerdeCodigo);
-
-  return (data ?? []).reduce((sum, row) => sum + Number(row.kg_existentes_gr), 0);
-}
-
 function mapRows(rows: CafeVerdeRow[], tostadoPorCodigo: Record<string, number>): LoteProductoTerminado[] {
   return rows.map((lote) => ({
     codigo: lote.codigo,
@@ -48,9 +41,10 @@ function mapRows(rows: CafeVerdeRow[], tostadoPorCodigo: Record<string, number>)
     formatos: (lote.cafe_verde_formatos_venta ?? []).map((f): FormatoProductoTerminado => {
       const requisitos = (f.packaging_requisito ?? []).map((r) => ({
         id: r.id,
+        packaging_componente_id: r.packaging_componente_id,
         componente: r.componente as FormatoProductoTerminado["requisitos"][0]["componente"],
         tipo: r.tipo,
-        cantidad_stock: Number(r.cantidad),
+        cantidad_stock: stockFromRequisitoRow(r),
         cantidad_por_unidad: Number(r.cantidad_por_unidad),
       }));
 
@@ -61,6 +55,8 @@ function mapRows(rows: CafeVerdeRow[], tostadoPorCodigo: Record<string, number>)
         kg_tostado_por_unidad_gr: f.kg_tostado_por_unidad_gr,
         receta_bloqueada: f.receta_bloqueada,
         unidades_producidas: Number(f.unidades_producidas),
+        precio_venta_ars: f.precio_venta_ars != null ? Number(f.precio_venta_ars) : null,
+        precio_venta_usd: f.precio_venta_usd != null ? Number(f.precio_venta_usd) : null,
         requisitos,
         kg_tostado_disponible_gr: tostadoPorCodigo[lote.codigo] ?? 0,
         puede_producir: false,
@@ -75,11 +71,6 @@ function mapRows(rows: CafeVerdeRow[], tostadoPorCodigo: Record<string, number>)
 export async function GET() {
   const supabase = await createClient();
 
-  const { data: codigos } = await supabase.from("cafe_verde").select("codigo");
-  for (const row of codigos ?? []) {
-    await syncPackagingRequisitosForCodigo(supabase, row.codigo);
-  }
-
   const { data, error } = await supabase
     .from("cafe_verde")
     .select(
@@ -92,10 +83,21 @@ export async function GET() {
         kg_tostado_por_unidad_gr,
         receta_bloqueada,
         unidades_producidas,
-        packaging_requisito ( id, componente, tipo, cantidad, cantidad_por_unidad )
+        precio_venta_ars,
+        precio_venta_usd,
+        packaging_requisito (
+          id,
+          packaging_componente_id,
+          componente,
+          tipo,
+          cantidad,
+          cantidad_por_unidad,
+          packaging_componente ( cantidad )
+        )
       )
     `,
     )
+    .is("deleted_at", null)
     .order("codigo", { ascending: true });
 
   if (error) {
@@ -103,10 +105,10 @@ export async function GET() {
   }
 
   const rows = (data ?? []) as CafeVerdeRow[];
-  const tostadoPorCodigo: Record<string, number> = {};
-  for (const lote of rows) {
-    tostadoPorCodigo[lote.codigo] = await getTostadoDisponible(supabase, lote.codigo);
-  }
+  const tostadoPorCodigo = await getTostadoDisponiblePorCodigos(
+    supabase,
+    rows.map((l) => l.codigo),
+  );
 
   return NextResponse.json({ lotes: mapRows(rows, tostadoPorCodigo) });
 }

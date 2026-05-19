@@ -14,6 +14,8 @@ const empty = {
   importador: "",
   lote: "",
   kg_iniciales_gr: "",
+  costo_total_ars: "",
+  costo_total_usd: "",
 };
 
 const inputClass =
@@ -51,6 +53,8 @@ export function CafeVerdeForm() {
           ...form,
           formatos_venta: formatosVenta,
           kg_iniciales_gr: Number(form.kg_iniciales_gr),
+          costo_total_ars: form.costo_total_ars === "" ? null : Number(form.costo_total_ars),
+          costo_total_usd: form.costo_total_usd === "" ? null : Number(form.costo_total_usd),
         }),
       });
 
@@ -175,6 +179,41 @@ export function CafeVerdeForm() {
           />
         </Field>
       </div>
+
+      <fieldset className="space-y-3 rounded-xl border border-zinc-200 bg-zinc-50/80 p-4 dark:border-zinc-700 dark:bg-zinc-950/40">
+        <legend className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
+          Precio de compra del lote
+        </legend>
+        <p className="text-xs text-zinc-500">
+          Costo total pagado por este ingreso. Opcional; podés completar solo una moneda.
+        </p>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Field label="Pesos (ARS)" id="costo_total_ars">
+            <input
+              id="costo_total_ars"
+              type="number"
+              min="0"
+              step="0.01"
+              value={form.costo_total_ars}
+              onChange={(e) => update("costo_total_ars", e.target.value)}
+              placeholder="Ej: 450000"
+              className={inputClass}
+            />
+          </Field>
+          <Field label="Dólares (USD)" id="costo_total_usd">
+            <input
+              id="costo_total_usd"
+              type="number"
+              min="0"
+              step="0.01"
+              value={form.costo_total_usd}
+              onChange={(e) => update("costo_total_usd", e.target.value)}
+              placeholder="Ej: 1200"
+              className={inputClass}
+            />
+          </Field>
+        </div>
+      </fieldset>
 
       <fieldset className="space-y-3">
         <legend className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
