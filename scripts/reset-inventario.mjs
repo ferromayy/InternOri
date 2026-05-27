@@ -27,6 +27,18 @@ function loadEnv() {
 
 loadEnv();
 
+const appEnv = (process.env.NEXT_PUBLIC_APP_ENV || process.env.APP_ENV || "").trim().toLowerCase();
+if (appEnv === "production") {
+  console.error("Reset bloqueado: NEXT_PUBLIC_APP_ENV=production.");
+  console.error("Usá el proyecto Supabase de DEV y NEXT_PUBLIC_APP_ENV=development en .env.local");
+  process.exit(1);
+}
+
+if (process.env.INVENTARIO_RESET_ALLOWED !== "true") {
+  console.error("Reset bloqueado: agregá INVENTARIO_RESET_ALLOWED=true en .env.local (solo entorno dev).");
+  process.exit(1);
+}
+
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 

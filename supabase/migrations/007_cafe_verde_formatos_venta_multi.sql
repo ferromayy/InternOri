@@ -1,4 +1,4 @@
--- Varios formatos de venta por lote de café verde
+-- Varios formatos de venta por lote (tabla ya creada en 002; acá migra desde 006 si aplica).
 
 create table if not exists public.cafe_verde_formatos_venta (
   id uuid primary key default gen_random_uuid(),
@@ -12,22 +12,37 @@ create table if not exists public.cafe_verde_formatos_venta (
 create index if not exists cafe_verde_formatos_venta_cafe_verde_id_idx
   on public.cafe_verde_formatos_venta (cafe_verde_id);
 
--- Migrar columna simple si existía (006)
-insert into public.cafe_verde_formatos_venta (cafe_verde_id, formato_venta)
-select cv.id, cv.formato_venta
-from public.cafe_verde cv
-where cv.formato_venta is not null
-on conflict (cafe_verde_id, formato_venta) do nothing;
-
-alter table public.cafe_verde drop column if exists formato_venta;
+-- Migrar columna simple de 006 (solo si existe; SQL dinámico para no fallar si ya corriste 002)
+do $$
+begin
+  if exists (
+    select 1
+    from information_schema.columns
+    where table_schema = 'public'
+      and table_name = 'cafe_verde'
+      and column_name = 'formato_venta'
+  ) then
+    execute $migrate$
+      insert into public.cafe_verde_formatos_venta (cafe_verde_id, formato_venta)
+      select cv.id, cv.formato_venta
+      from public.cafe_verde cv
+      where cv.formato_venta is not null
+      on conflict (cafe_verde_id, formato_venta) do nothing
+    $migrate$;
+    alter table public.cafe_verde drop column formato_venta;
+  end if;
+end $$;
 
 alter table public.cafe_verde_formatos_venta enable row level security;
 
+drop policy if exists "cafe_verde_formatos_select_anon" on public.cafe_verde_formatos_venta;
 create policy "cafe_verde_formatos_select_anon"
   on public.cafe_verde_formatos_venta for select to anon using (true);
 
+drop policy if exists "cafe_verde_formatos_insert_anon" on public.cafe_verde_formatos_venta;
 create policy "cafe_verde_formatos_insert_anon"
   on public.cafe_verde_formatos_venta for insert to anon with check (true);
 
+drop policy if exists "cafe_verde_formatos_delete_anon" on public.cafe_verde_formatos_venta;
 create policy "cafe_verde_formatos_delete_anon"
   on public.cafe_verde_formatos_venta for delete to anon using (true);

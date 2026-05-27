@@ -24,14 +24,18 @@ create trigger packaging_requisito_updated_at
 
 alter table public.packaging_requisito enable row level security;
 
+drop policy if exists "packaging_requisito_select_anon" on public.packaging_requisito;
 create policy "packaging_requisito_select_anon"
   on public.packaging_requisito for select to anon using (true);
 
+drop policy if exists "packaging_requisito_insert_anon" on public.packaging_requisito;
 create policy "packaging_requisito_insert_anon"
   on public.packaging_requisito for insert to anon with check (true);
 
+drop policy if exists "packaging_requisito_update_anon" on public.packaging_requisito;
 create policy "packaging_requisito_update_anon"
   on public.packaging_requisito for update to anon using (true) with check (true);
 
+drop policy if exists "packaging_requisito_delete_anon" on public.packaging_requisito;
 create policy "packaging_requisito_delete_anon"
   on public.packaging_requisito for delete to anon using (true);

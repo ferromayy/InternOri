@@ -1,4 +1,5 @@
 import { DashboardNav } from "@/components/dashboard/DashboardNav";
+import { EnvBanner } from "@/components/dashboard/EnvBanner";
 import { MobileNav } from "@/components/dashboard/MobileNav";
 import { LogoutButton } from "@/components/LogoutButton";
 import { ScrollToHash } from "@/components/inventario/ui/ScrollToHash";
@@ -32,6 +33,7 @@ export default async function DashboardLayout({
       </aside>
 
       <div className="flex min-w-0 flex-1 flex-col">
+        <EnvBanner />
         <header className="sticky top-0 z-30 flex items-center justify-between gap-3 border-b border-zinc-200 bg-white/95 px-4 py-3 backdrop-blur-md dark:border-zinc-800 dark:bg-zinc-900/95 md:px-8">
           <div className="flex min-w-0 items-center gap-2 md:hidden">
             <MobileNav />
