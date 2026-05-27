@@ -1,7 +1,8 @@
 "use client";
 
+import { labelRedirectPath, safeRedirectPath } from "@/lib/auth-redirect";
 import { useRouter, useSearchParams } from "next/navigation";
-import { FormEvent, useState } from "react";
+import { FormEvent, useMemo, useState } from "react";
 
 export function LoginForm() {
   const router = useRouter();
@@ -10,6 +11,16 @@ export function LoginForm() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+
+  const redirectTo = useMemo(() => {
+    return safeRedirectPath(searchParams.get("from"));
+  }, [searchParams]);
+
+  const destinationLabel = useMemo(() => {
+    const raw = searchParams.get("from");
+    if (!raw) return null;
+    return labelRedirectPath(safeRedirectPath(raw));
+  }, [searchParams]);
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
@@ -30,8 +41,7 @@ export function LoginForm() {
         return;
       }
 
-      const from = searchParams.get("from") || "/";
-      router.push(from);
+      router.push(redirectTo);
       router.refresh();
     } catch {
       setError("Error de red. Intentá de nuevo.");
@@ -42,6 +52,12 @@ export function LoginForm() {
 
   return (
     <form onSubmit={onSubmit} className="space-y-4">
+      {destinationLabel ? (
+        <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-950 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-100">
+          Después de entrar vas a: <strong>{destinationLabel}</strong>
+        </p>
+      ) : null}
+
       <div className="space-y-1">
         <label htmlFor="username" className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
           Usuario
@@ -54,7 +70,7 @@ export function LoginForm() {
           required
           value={username}
           onChange={(e) => setUsername(e.target.value)}
-          className="w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-zinc-900 outline-none ring-zinc-400 focus:ring-2 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-50"
+          className="w-full min-h-[44px] rounded-lg border border-zinc-300 bg-white px-4 py-3 text-base text-zinc-900 outline-none ring-zinc-400 focus:ring-2 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-50"
         />
       </div>
 
@@ -70,7 +86,7 @@ export function LoginForm() {
           required
           value={password}
           onChange={(e) => setPassword(e.target.value)}
-          className="w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-zinc-900 outline-none ring-zinc-400 focus:ring-2 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-50"
+          className="w-full min-h-[44px] rounded-lg border border-zinc-300 bg-white px-4 py-3 text-base text-zinc-900 outline-none ring-zinc-400 focus:ring-2 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-50"
         />
       </div>
 
@@ -83,7 +99,7 @@ export function LoginForm() {
       <button
         type="submit"
         disabled={loading}
-        className="w-full rounded-lg bg-zinc-900 py-2.5 text-sm font-medium text-white transition hover:bg-zinc-800 disabled:opacity-60 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200"
+        className="w-full min-h-[48px] rounded-lg bg-zinc-900 py-3 text-base font-medium text-white transition hover:bg-zinc-800 disabled:opacity-60 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200"
       >
         {loading ? "Entrando…" : "Iniciar sesión"}
       </button>

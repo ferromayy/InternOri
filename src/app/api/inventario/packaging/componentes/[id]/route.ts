@@ -80,7 +80,7 @@ export async function PATCH(
   if (Object.keys(patch).length === 0) {
     const { data: current, error: readError } = await supabase
       .from("packaging_componente")
-      .select("id, componente, tipo, cantidad, precio_compra_ars, precio_compra_usd")
+      .select("id, componente, tipo, cantidad, precio_compra_ars, precio_compra_usd, detalle")
       .eq("id", id)
       .maybeSingle();
 
@@ -97,7 +97,7 @@ export async function PATCH(
     .from("packaging_componente")
     .update(patch)
     .eq("id", id)
-    .select("id, componente, tipo, cantidad, precio_compra_ars, precio_compra_usd")
+    .select("id, componente, tipo, cantidad, precio_compra_ars, precio_compra_usd, detalle")
     .single();
 
   if (error) {

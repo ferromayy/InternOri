@@ -2,13 +2,17 @@
 
 import { buildCapacidadSkus, calcularCapacidadFormato } from "@/lib/inventario/capacidad";
 import { labelComponentePackaging } from "@/lib/inventario/packaging";
+import {
+  btnPrimary,
+  formCardClass,
+  formStickyFooterClass,
+  inputClass,
+  selectClass,
+} from "@/components/inventario/ui/form-styles";
 import { useProductoTerminadoLotes } from "@/lib/hooks/use-producto-terminado-lotes";
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { ProduccionHistorialPanel } from "@/components/inventario/producto-terminado/ProduccionHistorialPanel";
 import { EmptyState, RefreshBanner } from "@/components/inventario/ui/InventarioSection";
-
-const inputClass =
-  "w-full rounded-xl border border-zinc-300 bg-white px-4 py-3 text-base dark:border-zinc-700 dark:bg-zinc-950";
 
 export function ProduccionView() {
   const { lotes, initialLoading, refreshing, error, reload } = useProductoTerminadoLotes();
@@ -19,6 +23,7 @@ export function ProduccionView() {
   const [cantidad, setCantidad] = useState("1");
   const [precioVentaArs, setPrecioVentaArs] = useState("");
   const [precioVentaUsd, setPrecioVentaUsd] = useState("");
+  const [detalle, setDetalle] = useState("");
   const [enviando, setEnviando] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
 
@@ -68,6 +73,7 @@ export function ProduccionView() {
           delta: q,
           precio_venta_ars: precioVentaArs,
           precio_venta_usd: precioVentaUsd,
+          detalle,
         }),
       });
       const data = await res.json();
@@ -77,6 +83,7 @@ export function ProduccionView() {
       }
       setMsg(`+${q} unidad${q !== 1 ? "es" : ""} registrada${q !== 1 ? "s" : ""}.`);
       setCantidad("1");
+      setDetalle("");
       window.dispatchEvent(new Event("cafe-verde-updated"));
       reload();
     } catch {
@@ -102,8 +109,9 @@ export function ProduccionView() {
       <RefreshBanner show={refreshing} />
 
       <form
+        id="formulario"
         onSubmit={producir}
-        className="space-y-5 rounded-2xl border border-emerald-200/60 bg-white p-5 shadow-sm dark:border-emerald-900/30 dark:bg-zinc-900 sm:p-6"
+        className={`scroll-mt-24 ${formCardClass} border-emerald-200/60 dark:border-emerald-900/30`}
       >
         <div>
           <label className="text-xs font-medium uppercase tracking-wide text-zinc-500">
@@ -112,7 +120,7 @@ export function ProduccionView() {
           <select
             value={formatoId}
             onChange={(e) => setFormatoId(e.target.value)}
-            className={`mt-2 ${inputClass}`}
+            className={`mt-2 ${selectClass}`}
             required
           >
             <option value="">Seleccionar…</option>
@@ -139,7 +147,7 @@ export function ProduccionView() {
           />
         </div>
 
-        <div className="grid gap-4 sm:grid-cols-2">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <div>
             <label className="text-xs font-medium uppercase tracking-wide text-zinc-500">
               Precio de venta (ARS)
@@ -170,6 +178,18 @@ export function ProduccionView() {
           </div>
         </div>
 
+        <div>
+          <label className="text-xs font-medium uppercase tracking-wide text-zinc-500">
+            Detalle (opcional)
+          </label>
+          <input
+            value={detalle}
+            onChange={(e) => setDetalle(e.target.value)}
+            placeholder="Ej: Lote de producción, turno, observaciones…"
+            className={`mt-2 ${inputClass}`}
+          />
+        </div>
+
         {seleccionado && formato ? (
           <div className="rounded-xl bg-zinc-50 p-4 text-sm dark:bg-zinc-950/60">
             <p className="text-zinc-600 dark:text-zinc-400">
@@ -194,13 +214,15 @@ export function ProduccionView() {
           </div>
         ) : null}
 
-        <button
-          type="submit"
-          disabled={enviando}
-          className="w-full rounded-xl bg-emerald-800 py-3.5 text-sm font-medium text-white disabled:opacity-60"
-        >
-          {enviando ? "Procesando…" : "Registrar producción"}
-        </button>
+        <div className={formStickyFooterClass}>
+          <button
+            type="submit"
+            disabled={enviando}
+            className={`${btnPrimary} !bg-emerald-800 hover:!bg-emerald-900`}
+          >
+            {enviando ? "Procesando…" : "Registrar producción"}
+          </button>
+        </div>
       </form>
 
       {msg ? (
@@ -233,6 +255,7 @@ function ProduccionLoteRapida({
   const [codigo, setCodigo] = useState(lotes[0]?.codigo ?? "");
   const [cantidades, setCantidades] = useState<Record<string, string>>({});
   const [enviando, setEnviando] = useState(false);
+  const [detalle, setDetalle] = useState("");
 
   const lote = lotes.find((l) => l.codigo === codigo);
   const formatos = lote?.formatos.filter((f) => f.receta_bloqueada) ?? [];
@@ -247,6 +270,7 @@ function ProduccionLoteRapida({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           codigo: lote.codigo,
+          detalle,
           cantidades: formatos.map((f) => ({
             cafe_verde_formato_id: f.id,
             cantidad: Number(cantidades[f.id]) || 0,
@@ -257,6 +281,7 @@ function ProduccionLoteRapida({
       if (!res.ok) alert(data.error ?? "Error");
       else {
         setCantidades({});
+        setDetalle("");
         window.dispatchEvent(new Event("cafe-verde-updated"));
         onDone();
       }
@@ -300,6 +325,15 @@ function ProduccionLoteRapida({
               />
             </label>
           ))}
+          <div>
+            <label className="text-xs font-medium text-zinc-500">Detalle (opcional)</label>
+            <input
+              value={detalle}
+              onChange={(e) => setDetalle(e.target.value)}
+              placeholder="Aplica a todas las líneas del lote"
+              className={`mt-1 ${inputClass}`}
+            />
+          </div>
           <button
             type="submit"
             disabled={enviando}

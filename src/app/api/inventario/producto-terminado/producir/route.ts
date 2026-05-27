@@ -1,4 +1,4 @@
-import { parsePreciosVentaBody } from "@/lib/inventario/producir-input";
+import { parseDetalleBody, parsePreciosVentaBody } from "@/lib/inventario/producir-input";
 import { producirFormato } from "@/lib/inventario/producir-producto-terminado";
 import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
@@ -31,6 +31,7 @@ export async function POST(request: Request) {
     delta,
     undefined,
     preciosParsed.precios,
+    parseDetalleBody(body),
   );
 
   if ("error" in resultado) {

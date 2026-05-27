@@ -20,19 +20,23 @@ export function PackagingComponentesView() {
   const loading = initialLoading || pt.initialLoading;
 
   return (
-    <div className="space-y-8">
+    <div className="flex flex-col gap-8">
       <RefreshBanner show={refreshing || pt.refreshing} />
       <p className="text-sm text-zinc-600 dark:text-zinc-400">
         Stock y catálogo de componentes físicos. Las recetas (qué usa cada formato y cuánto por
         unidad) se configuran en la pestaña Recetas.
       </p>
 
-      <CatalogoComponentesPanel />
+      <div className="order-1 md:order-none">
+        <CatalogoComponentesPanel />
+      </div>
 
-      <ComponenteIngresosPanel catalogo={catalogo} />
+      <div className="order-2 md:order-none">
+        <ComponenteIngresosPanel catalogo={catalogo} />
+      </div>
 
       {!loading && !error && componentes.length > 0 ? (
-        <div className="overflow-x-auto rounded-2xl border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900">
+        <div className="order-3 overflow-x-auto rounded-2xl border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900 md:order-none">
           <table className="w-full min-w-[320px] text-sm">
             <thead>
               <tr className="border-b border-zinc-100 text-left text-xs text-zinc-500 dark:border-zinc-800">

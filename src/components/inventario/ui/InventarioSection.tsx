@@ -38,7 +38,7 @@ export function InventarioSubNav({
 
   return (
     <nav
-      className="-mx-1 flex gap-1 overflow-x-auto pb-1 scrollbar-none"
+      className="-mx-1 flex gap-1.5 overflow-x-auto pb-1 scrollbar-none"
       aria-label="Subsecciones"
     >
       {items.map((item) => {
@@ -49,7 +49,7 @@ export function InventarioSubNav({
           <Link
             key={item.href}
             href={item.href}
-            className={`shrink-0 rounded-full px-4 py-2 text-sm transition ${
+            className={`shrink-0 rounded-full px-4 py-2.5 text-sm transition min-h-[44px] flex items-center ${
               active
                 ? "bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900"
                 : "text-zinc-600 hover:bg-zinc-100 dark:text-zinc-400 dark:hover:bg-zinc-800"

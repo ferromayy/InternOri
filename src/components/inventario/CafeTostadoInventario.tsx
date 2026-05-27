@@ -1,8 +1,8 @@
 "use client";
 
-import type { CafeTostado } from "@/types/inventario";
+import type { CafeTostado, CafeTostadoInput, CafeVerdeParaTostado } from "@/types/inventario";
 import { useRouter } from "next/navigation";
-import { FormEvent, useCallback, useEffect, useState } from "react";
+import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 
 const inputClass =
   "w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-950";
@@ -196,16 +196,58 @@ function EditarCafeTostadoModal({
   row: CafeTostado;
   saving: boolean;
   onClose: () => void;
-  onSave: (patch: { fecha_tueste: string; perfil: string }) => Promise<boolean>;
+  onSave: (patch: Partial<CafeTostadoInput>) => Promise<boolean>;
 }) {
+  const [lotesVerde, setLotesVerde] = useState<CafeVerdeParaTostado[]>([]);
+  const [loadingLotes, setLoadingLotes] = useState(true);
+  const [cafe_verde_codigo, setCafeVerdeCodigo] = useState(row.cafe_verde_codigo);
   const [fecha_tueste, setFechaTueste] = useState(row.fecha_tueste);
   const [perfil, setPerfil] = useState(row.perfil);
+  const [kg_verde_tostado_gr, setKgVerdeTostado] = useState(String(row.kg_verde_tostado_gr));
+  const [kg_despues_tostar_gr, setKgDespues] = useState(String(row.kg_despues_tostar_gr));
+  const [detalle, setDetalle] = useState(row.detalle ?? "");
   const [formError, setFormError] = useState<string | null>(null);
+
+  const lotesOpciones = useMemo(() => {
+    const map = new Map<string, CafeVerdeParaTostado>();
+    for (const l of lotesVerde) map.set(l.codigo, l);
+    if (!map.has(row.cafe_verde_codigo)) {
+      map.set(row.cafe_verde_codigo, {
+        codigo: row.cafe_verde_codigo,
+        varietal: "—",
+        origen: "—",
+        lote: "—",
+        kg_iniciales_gr: 0,
+        kg_actuales_gr: 0,
+      });
+    }
+    return [...map.values()].sort((a, b) => a.codigo.localeCompare(b.codigo));
+  }, [lotesVerde, row.cafe_verde_codigo]);
+
+  const loteSeleccionado = lotesOpciones.find((l) => l.codigo === cafe_verde_codigo);
+  const tieneProduccion = row.kg_vendidos_gr > 0;
+
+  useEffect(() => {
+    fetch("/api/inventario/cafe-verde/para-tostado")
+      .then((res) => res.json())
+      .then((data) => {
+        setLotesVerde(data.items ?? []);
+        setLoadingLotes(false);
+      })
+      .catch(() => setLoadingLotes(false));
+  }, []);
 
   async function submit(e: FormEvent) {
     e.preventDefault();
     setFormError(null);
-    const ok = await onSave({ fecha_tueste, perfil });
+    const ok = await onSave({
+      cafe_verde_codigo,
+      fecha_tueste,
+      perfil,
+      kg_verde_tostado_gr: Number(kg_verde_tostado_gr),
+      kg_despues_tostar_gr: Number(kg_despues_tostar_gr),
+      detalle,
+    });
     if (!ok) setFormError("Revisá el mensaje de error arriba de la tabla.");
   }
 
@@ -213,13 +255,43 @@ function EditarCafeTostadoModal({
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-4 sm:items-center">
       <div
         role="dialog"
-        className="w-full max-w-md rounded-2xl border border-zinc-200 bg-white p-6 shadow-xl dark:border-zinc-700 dark:bg-zinc-900"
+        className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl border border-zinc-200 bg-white p-6 shadow-xl dark:border-zinc-700 dark:bg-zinc-900"
       >
         <h3 className="text-lg font-semibold">Editar {row.codigo}</h3>
         <p className="mt-1 text-xs text-zinc-500">
-          Los kg de tueste no se editan aquí; eliminá y volvé a cargar si hubo un error de pesaje.
+          El código de tueste ({row.codigo}) no se modifica. Merma y kg existentes se recalculan al
+          guardar.
         </p>
+        {tieneProduccion ? (
+          <p className="mt-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-200">
+            Este tueste ya usó {formatGr(row.kg_vendidos_gr)} g en producción. Los kg después de
+            tostar no pueden ser menores a ese valor.
+          </p>
+        ) : null}
         <form onSubmit={submit} className="mt-4 space-y-3">
+          <div>
+            <label className="text-xs font-medium">ID (café verde)</label>
+            <select
+              required
+              value={cafe_verde_codigo}
+              onChange={(e) => setCafeVerdeCodigo(e.target.value)}
+              disabled={loadingLotes}
+              className={`mt-1 ${inputClass}`}
+            >
+              {lotesOpciones.map((lote) => (
+                <option key={lote.codigo} value={lote.codigo}>
+                  {lote.codigo}
+                  {lote.varietal !== "—" ? ` — ${lote.varietal}` : ""}
+                  {lote.kg_actuales_gr > 0 ? ` (${lote.kg_actuales_gr} g disp.)` : " (sin stock)"}
+                </option>
+              ))}
+            </select>
+            {loteSeleccionado && loteSeleccionado.varietal !== "—" ? (
+              <p className="mt-1 text-xs text-zinc-500">
+                {loteSeleccionado.origen} · lote {loteSeleccionado.lote}
+              </p>
+            ) : null}
+          </div>
           <div>
             <label className="text-xs font-medium">Fecha de tueste</label>
             <input
@@ -236,6 +308,40 @@ function EditarCafeTostadoModal({
               required
               value={perfil}
               onChange={(e) => setPerfil(e.target.value)}
+              placeholder="Ej: Espresso, Filtrado"
+              className={`mt-1 ${inputClass}`}
+            />
+          </div>
+          <div>
+            <label className="text-xs font-medium">Kg verde a tostar (gr)</label>
+            <input
+              type="number"
+              min="0.01"
+              step="0.01"
+              required
+              value={kg_verde_tostado_gr}
+              onChange={(e) => setKgVerdeTostado(e.target.value)}
+              className={`mt-1 ${inputClass}`}
+            />
+          </div>
+          <div>
+            <label className="text-xs font-medium">Kg después de tostar (gr)</label>
+            <input
+              type="number"
+              min="0.01"
+              step="0.01"
+              required
+              value={kg_despues_tostar_gr}
+              onChange={(e) => setKgDespues(e.target.value)}
+              className={`mt-1 ${inputClass}`}
+            />
+          </div>
+          <div>
+            <label className="text-xs font-medium">Detalle (opcional)</label>
+            <input
+              value={detalle}
+              onChange={(e) => setDetalle(e.target.value)}
+              placeholder="Ej: Horno, lote de tueste, observaciones…"
               className={`mt-1 ${inputClass}`}
             />
           </div>
@@ -243,7 +349,7 @@ function EditarCafeTostadoModal({
           <div className="flex gap-2 pt-2">
             <button
               type="submit"
-              disabled={saving}
+              disabled={saving || loadingLotes}
               className="rounded-lg bg-zinc-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-60"
             >
               {saving ? "Guardando…" : "Guardar"}

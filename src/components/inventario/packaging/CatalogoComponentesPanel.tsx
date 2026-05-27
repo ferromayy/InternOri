@@ -5,10 +5,14 @@ import { COMPONENTES_PACKAGING, labelComponentePackaging } from "@/lib/inventari
 import type { ComponentePackaging } from "@/lib/inventario/packaging";
 import type { PackagingComponenteCatalogo } from "@/lib/inventario/packaging-componente";
 import { usePackagingCatalogo } from "@/lib/hooks/use-packaging-catalogo";
+import {
+  btnPrimaryDark,
+  formStickyFooterClass,
+  inputClass,
+  selectClass,
+} from "@/components/inventario/ui/form-styles";
+import { useSearchParams } from "next/navigation";
 import { FormEvent, useEffect, useState } from "react";
-
-const inputClass =
-  "w-full rounded-xl border border-zinc-300 bg-white px-3 py-2.5 text-base sm:text-sm dark:border-zinc-700 dark:bg-zinc-950";
 
 const btnSecondary =
   "rounded-lg border border-zinc-300 bg-white px-3 py-2 text-xs font-medium text-zinc-700 transition hover:bg-zinc-50 disabled:opacity-50 dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:bg-zinc-800";
@@ -18,6 +22,7 @@ function notifyUpdated() {
 }
 
 export function CatalogoComponentesPanel() {
+  const searchParams = useSearchParams();
   const { catalogo, initialLoading, refreshing, error, reload } = usePackagingCatalogo();
   const [showForm, setShowForm] = useState(false);
   const [componente, setComponente] = useState<ComponentePackaging | "">("");
@@ -25,8 +30,15 @@ export function CatalogoComponentesPanel() {
   const [cantidad, setCantidad] = useState("0");
   const [precioCompraArs, setPrecioCompraArs] = useState("");
   const [precioCompraUsd, setPrecioCompraUsd] = useState("");
+  const [detalle, setDetalle] = useState("");
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (searchParams.get("focus") === "formulario") {
+      setShowForm(true);
+    }
+  }, [searchParams]);
 
   async function crear(e: FormEvent) {
     e.preventDefault();
@@ -42,6 +54,7 @@ export function CatalogoComponentesPanel() {
           cantidad: Number(cantidad) || 0,
           precio_compra_ars: precioCompraArs,
           precio_compra_usd: precioCompraUsd,
+          detalle,
         }),
       });
       const data = await res.json();
@@ -54,6 +67,7 @@ export function CatalogoComponentesPanel() {
       setCantidad("0");
       setPrecioCompraArs("");
       setPrecioCompraUsd("");
+      setDetalle("");
       setShowForm(false);
       notifyUpdated();
       reload();
@@ -78,7 +92,7 @@ export function CatalogoComponentesPanel() {
   }
 
   return (
-    <section className="space-y-4">
+    <section id="formulario" className="scroll-mt-24 space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="text-sm text-zinc-600 dark:text-zinc-400">
           Crear, editar stock y eliminar componentes. El stock es compartido en todos los formatos que
@@ -106,7 +120,7 @@ export function CatalogoComponentesPanel() {
               required
               value={componente}
               onChange={(e) => setComponente(e.target.value as ComponentePackaging)}
-              className={`mt-1 ${inputClass}`}
+              className={`mt-1 ${selectClass}`}
             >
               <option value="">Seleccionar…</option>
               {COMPONENTES_PACKAGING.map((c) => (
@@ -168,13 +182,18 @@ export function CatalogoComponentesPanel() {
               </div>
             </div>
           </fieldset>
-          {formError ? <p className="text-sm text-red-600 sm:col-span-2">{formError}</p> : null}
           <div className="sm:col-span-2">
-            <button
-              type="submit"
-              disabled={saving}
-              className="rounded-xl bg-zinc-900 px-4 py-2.5 text-sm font-medium text-white disabled:opacity-60"
-            >
+            <label className="text-xs font-medium">Detalle (opcional)</label>
+            <input
+              value={detalle}
+              onChange={(e) => setDetalle(e.target.value)}
+              placeholder="Ej: Proveedor, factura, SKU…"
+              className={`mt-1 ${inputClass}`}
+            />
+          </div>
+          {formError ? <p className="text-sm text-red-600 sm:col-span-2">{formError}</p> : null}
+          <div className={`sm:col-span-2 ${formStickyFooterClass}`}>
+            <button type="submit" disabled={saving} className={btnPrimaryDark}>
               {saving ? "Guardando…" : "Crear en catálogo"}
             </button>
           </div>

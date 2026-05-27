@@ -1,5 +1,5 @@
 import { parseFormatosVenta } from "@/lib/inventario/formato-venta";
-import { parseMontoOpcional } from "@/lib/inventario/moneda";
+import { parseDetalleOpcional, parseMontoOpcional } from "@/lib/inventario/moneda";
 import type { CafeVerdeInput } from "@/types/inventario";
 
 export function validateCafeVerdeInput(
@@ -69,6 +69,7 @@ export function validateCafeVerdeInput(
       kg_iniciales_gr,
       costo_total_ars,
       costo_total_usd,
+      detalle: parseDetalleOpcional(b.detalle),
     },
   };
 }
@@ -88,6 +89,7 @@ type CafeVerdeRow = {
   kg_actuales_gr: number;
   costo_total_ars: number | null;
   costo_total_usd: number | null;
+  detalle: string | null;
   created_at: string;
   deleted_at: string | null;
   cafe_verde_formatos_venta: { formato_venta: string }[] | null;
@@ -150,6 +152,10 @@ export function validateCafeVerdeUpdate(
       return { ok: false, error: "Costo en dólares inválido" };
     }
     patch.costo_total_usd = costo_total_usd;
+  }
+
+  if (b.detalle !== undefined) {
+    patch.detalle = parseDetalleOpcional(b.detalle);
   }
 
   if (Object.keys(patch).length === 0) {

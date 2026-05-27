@@ -1,16 +1,17 @@
+import { parseDetalleBody } from "@/lib/inventario/producir-input";
 import { producirLote, type ItemProduccionLote } from "@/lib/inventario/producir-producto-terminado";
 import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
 
 export async function POST(request: Request) {
-  let body: { codigo?: string; cantidades?: unknown };
+  let body: Record<string, unknown> & { codigo?: string; cantidades?: unknown };
   try {
     body = await request.json();
   } catch {
     return NextResponse.json({ error: "JSON inválido" }, { status: 400 });
   }
 
-  const codigo = body.codigo?.trim();
+  const codigo = typeof body.codigo === "string" ? body.codigo.trim() : "";
   if (!codigo) {
     return NextResponse.json({ error: "ID de café verde requerido" }, { status: 400 });
   }
@@ -34,7 +35,7 @@ export async function POST(request: Request) {
   }
 
   const supabase = await createClient();
-  const resultado = await producirLote(supabase, codigo, items);
+  const resultado = await producirLote(supabase, codigo, items, parseDetalleBody(body));
 
   if ("error" in resultado) {
     const status =

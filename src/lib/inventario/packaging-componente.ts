@@ -1,4 +1,4 @@
-import { parseMontoOpcional } from "@/lib/inventario/moneda";
+import { parseDetalleOpcional, parseMontoOpcional } from "@/lib/inventario/moneda";
 import { isComponentePackaging, type ComponentePackaging } from "@/lib/inventario/packaging";
 
 export type PackagingComponenteCatalogo = {
@@ -8,6 +8,7 @@ export type PackagingComponenteCatalogo = {
   cantidad: number;
   precio_compra_ars: number | null;
   precio_compra_usd: number | null;
+  detalle: string | null;
 };
 
 type PrecioCompraInput = {
@@ -50,6 +51,7 @@ export function validateComponenteCatalogoInput(body: unknown):
         cantidad: number;
         precio_compra_ars: number | null;
         precio_compra_usd: number | null;
+        detalle: string | null;
       };
     }
   | { ok: false; error: string } {
@@ -71,7 +73,7 @@ export function validateComponenteCatalogoInput(body: unknown):
 
   return {
     ok: true,
-    data: { componente, tipo, cantidad, ...precios.data },
+    data: { componente, tipo, cantidad, ...precios.data, detalle: parseDetalleOpcional(b.detalle) },
   };
 }
 
@@ -84,6 +86,7 @@ export function validateComponenteCatalogoPatchInput(body: unknown):
         cantidad: number;
         precio_compra_ars: number | null;
         precio_compra_usd: number | null;
+        detalle: string | null;
       }>;
     }
   | { ok: false; error: string } {
@@ -96,6 +99,7 @@ export function validateComponenteCatalogoPatchInput(body: unknown):
     cantidad: number;
     precio_compra_ars: number | null;
     precio_compra_usd: number | null;
+    detalle: string | null;
   }> = {};
 
   if (b.componente !== undefined) {
@@ -134,6 +138,10 @@ export function validateComponenteCatalogoPatchInput(body: unknown):
       return { ok: false, error: "Precio de compra en dólares inválido" };
     }
     patch.precio_compra_usd = precio_compra_usd;
+  }
+
+  if (b.detalle !== undefined) {
+    patch.detalle = parseDetalleOpcional(b.detalle);
   }
 
   if (Object.keys(patch).length === 0) {

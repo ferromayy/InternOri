@@ -1,5 +1,12 @@
 "use client";
 
+import {
+  btnPrimary,
+  formCardClass,
+  formStickyFooterClass,
+  inputClass,
+  selectClass,
+} from "@/components/inventario/ui/form-styles";
 import type { CafeVerdeParaTostado } from "@/types/inventario";
 import { useRouter } from "next/navigation";
 import { FormEvent, useEffect, useState } from "react";
@@ -10,10 +17,8 @@ const empty = {
   perfil: "",
   kg_verde_tostado_gr: "",
   kg_despues_tostar_gr: "",
+  detalle: "",
 };
-
-const inputClass =
-  "w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 outline-none focus:ring-2 focus:ring-amber-500/40 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-50";
 
 export function CafeTostadoForm() {
   const router = useRouter();
@@ -59,6 +64,7 @@ export function CafeTostadoForm() {
           perfil: form.perfil,
           kg_verde_tostado_gr: Number(form.kg_verde_tostado_gr),
           kg_despues_tostar_gr: Number(form.kg_despues_tostar_gr),
+          detalle: form.detalle,
         }),
       });
 
@@ -87,10 +93,7 @@ export function CafeTostadoForm() {
   }
 
   return (
-    <form
-      onSubmit={onSubmit}
-      className="space-y-5 rounded-xl border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-900"
-    >
+    <form onSubmit={onSubmit} className={formCardClass}>
       <div>
         <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">Nuevo tueste</h2>
         <p className="mt-1 text-sm text-zinc-500">
@@ -99,7 +102,7 @@ export function CafeTostadoForm() {
         </p>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <Field label="ID (café verde)" id="cafe_verde_codigo">
           <select
             id="cafe_verde_codigo"
@@ -107,7 +110,7 @@ export function CafeTostadoForm() {
             value={form.cafe_verde_codigo}
             onChange={(e) => update("cafe_verde_codigo", e.target.value)}
             disabled={loadingLotes}
-            className={inputClass}
+            className={selectClass}
           >
             <option value="">
               {loadingLotes ? "Cargando lotes…" : "Seleccionar lote de café verde"}
@@ -186,6 +189,16 @@ export function CafeTostadoForm() {
             className={inputClass}
           />
         </Field>
+
+        <Field label="Detalle (opcional)" id="detalle">
+          <input
+            id="detalle"
+            value={form.detalle}
+            onChange={(e) => update("detalle", e.target.value)}
+            placeholder="Ej: Horno, lote de tueste, observaciones…"
+            className={inputClass}
+          />
+        </Field>
       </div>
 
       {error ? (
@@ -199,13 +212,15 @@ export function CafeTostadoForm() {
         </p>
       ) : null}
 
-      <button
-        type="submit"
-        disabled={loading || loadingLotes || lotesVerde.length === 0}
-        className="rounded-lg bg-amber-700 px-4 py-2.5 text-sm font-medium text-white hover:bg-amber-800 disabled:opacity-60"
-      >
-        {loading ? "Guardando…" : "Registrar café tostado"}
-      </button>
+      <div className={formStickyFooterClass}>
+        <button
+          type="submit"
+          disabled={loading || loadingLotes || lotesVerde.length === 0}
+          className={btnPrimary}
+        >
+          {loading ? "Guardando…" : "Registrar café tostado"}
+        </button>
+      </div>
     </form>
   );
 }

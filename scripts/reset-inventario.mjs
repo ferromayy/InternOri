@@ -1,5 +1,5 @@
 /**
- * Borra todos los datos de inventario (café verde, tostado, packaging).
+ * Borra todos los datos de inventario (café verde, tostado, packaging, producción, ventas).
  * No modifica el esquema ni health_check.
  *
  * Uso: node scripts/reset-inventario.mjs
@@ -38,15 +38,36 @@ if (!url || !key) {
 const supabase = createClient(url, key);
 
 async function deleteAll(table) {
-  const { error, count } = await supabase.from(table).delete({ count: "exact" }).neq("id", "00000000-0000-0000-0000-000000000000");
-  if (error) throw new Error(`${table}: ${error.message}`);
-  return count ?? 0;
+  const { data: rows, error: selectError } = await supabase.from(table).select("id");
+  if (selectError) throw new Error(`${table}: ${selectError.message}`);
+  if (!rows?.length) return 0;
+
+  let deleted = 0;
+  for (const row of rows) {
+    const { error, count } = await supabase.from(table).delete({ count: "exact" }).eq("id", row.id);
+    if (error) throw new Error(`${table}: ${error.message}`);
+    deleted += count ?? 0;
+  }
+
+  const { count: remaining } = await supabase
+    .from(table)
+    .select("id", { count: "exact", head: true });
+  if ((remaining ?? 0) > 0) {
+    throw new Error(
+      `${table}: quedaron ${remaining} fila(s). Ejecutá supabase/scripts/reset-inventario-completo.sql en el SQL Editor.`,
+    );
+  }
+  return deleted;
 }
 
 async function main() {
   console.log("Reseteando inventario en Supabase…\n");
 
   const steps = [
+    ["producto_terminado_produccion_consumo", () => deleteAll("producto_terminado_produccion_consumo")],
+    ["producto_terminado_produccion", () => deleteAll("producto_terminado_produccion")],
+    ["producto_terminado_venta", () => deleteAll("producto_terminado_venta")],
+    ["packaging_componente_ingreso", () => deleteAll("packaging_componente_ingreso")],
     ["packaging_requisito", () => deleteAll("packaging_requisito")],
     ["packaging_componente", () => deleteAll("packaging_componente")],
     ["cafe_tostado", () => deleteAll("cafe_tostado")],
@@ -55,15 +76,25 @@ async function main() {
   ];
 
   for (const [name, fn] of steps) {
-    const n = await fn();
-    console.log(`  ${name}: ${n} fila(s) eliminada(s)`);
+    try {
+      const n = await fn();
+      console.log(`  ${name}: ${n} fila(s) eliminada(s)`);
+    } catch (e) {
+      if (e.message.includes("does not exist") || e.message.includes("schema cache")) {
+        console.log(`  ${name}: (tabla no existe — omitida)`);
+      } else {
+        throw e;
+      }
+    }
   }
 
-  console.log("\nListo. Inventario vacío (formatos de venta se borran en cascada con café verde).");
+  console.log("\nListo. Inventario vacío. Podés cargar datos reales desde cero.");
 }
 
 main().catch((e) => {
   console.error("\nError:", e.message);
-  console.error("\nSi falla por RLS, ejecutá supabase/scripts/reset-inventario.sql en el SQL Editor de Supabase.");
+  console.error(
+    "\nSi falla por RLS o permisos, ejecutá supabase/scripts/reset-inventario.sql en el SQL Editor de Supabase.",
+  );
   process.exit(1);
 });

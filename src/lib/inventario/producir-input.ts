@@ -1,4 +1,4 @@
-import { parseMontoOpcional } from "@/lib/inventario/moneda";
+import { parseDetalleOpcional, parseMontoOpcional } from "@/lib/inventario/moneda";
 import type { PreciosVentaInput } from "@/lib/inventario/producir-producto-terminado";
 
 function parsePrecioField(value: unknown, label: string): number | null | "invalid" {
@@ -25,4 +25,8 @@ export function parsePreciosVentaBody(body: Record<string, unknown>):
     ok: true,
     precios: { precio_venta_ars, precio_venta_usd },
   };
+}
+
+export function parseDetalleBody(body: Record<string, unknown>): string | null {
+  return parseDetalleOpcional(body.detalle);
 }

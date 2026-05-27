@@ -1,5 +1,8 @@
 import { DashboardNav } from "@/components/dashboard/DashboardNav";
+import { MobileNav } from "@/components/dashboard/MobileNav";
 import { LogoutButton } from "@/components/LogoutButton";
+import { ScrollToHash } from "@/components/inventario/ui/ScrollToHash";
+import { Suspense } from "react";
 import { SESSION_COOKIE, verifySessionCookie } from "@/lib/auth";
 import { cookies } from "next/headers";
 import Link from "next/link";
@@ -29,9 +32,10 @@ export default async function DashboardLayout({
       </aside>
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="flex items-center justify-between border-b border-zinc-200 bg-white px-4 py-3 dark:border-zinc-800 dark:bg-zinc-900 md:px-8">
-          <div className="md:hidden">
-            <Link href="/dashboard" className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">
+        <header className="sticky top-0 z-30 flex items-center justify-between gap-3 border-b border-zinc-200 bg-white/95 px-4 py-3 backdrop-blur-md dark:border-zinc-800 dark:bg-zinc-900/95 md:px-8">
+          <div className="flex min-w-0 items-center gap-2 md:hidden">
+            <MobileNav />
+            <Link href="/dashboard" className="truncate text-sm font-semibold text-zinc-900 dark:text-zinc-50">
               InternOri
             </Link>
           </div>
@@ -46,7 +50,12 @@ export default async function DashboardLayout({
           <LogoutButton />
         </header>
 
-        <main className="flex-1 overflow-y-auto p-4 md:p-8">{children}</main>
+        <main className="flex-1 overflow-y-auto p-4 pb-8 md:p-8">
+          <Suspense fallback={null}>
+            <ScrollToHash />
+          </Suspense>
+          {children}
+        </main>
       </div>
     </div>
   );

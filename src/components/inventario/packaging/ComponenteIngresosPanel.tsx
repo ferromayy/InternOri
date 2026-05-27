@@ -5,14 +5,19 @@ import {
   labelIngresoComponente,
   type PackagingComponenteIngreso,
 } from "@/lib/inventario/packaging-componente-ingreso";
-import { formatMoneda } from "@/lib/inventario/moneda";
+import { formatMoneda, precioPorUnidad } from "@/lib/inventario/moneda";
 import { labelComponentePackaging } from "@/lib/inventario/packaging";
 import type { PackagingComponenteCatalogo } from "@/lib/inventario/packaging-componente";
+import {
+  btnPrimary,
+  formCardClass,
+  formStickyFooterClass,
+  inputClass,
+  selectClass,
+} from "@/components/inventario/ui/form-styles";
 import { usePackagingIngresos } from "@/lib/hooks/use-packaging-ingresos";
-import { FormEvent, useState } from "react";
-
-const inputClass =
-  "w-full rounded-xl border border-zinc-300 bg-white px-3 py-2.5 text-base sm:text-sm dark:border-zinc-700 dark:bg-zinc-950";
+import { useSearchParams } from "next/navigation";
+import { FormEvent, useEffect, useState } from "react";
 
 function formatFecha(iso: string) {
   return new Date(iso).toLocaleString("es-AR", {
@@ -30,6 +35,7 @@ export function ComponenteIngresosPanel({
 }: {
   catalogo: PackagingComponenteCatalogo[];
 }) {
+  const searchParams = useSearchParams();
   const { ingresos, initialLoading, refreshing, error, reload } = usePackagingIngresos();
   const [showForm, setShowForm] = useState(false);
   const [componenteId, setComponenteId] = useState("");
@@ -39,6 +45,12 @@ export function ComponenteIngresosPanel({
   const [notas, setNotas] = useState("");
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (searchParams.get("focus") === "ingreso") {
+      setShowForm(true);
+    }
+  }, [searchParams]);
 
   async function registrar(e: FormEvent) {
     e.preventDefault();
@@ -77,7 +89,7 @@ export function ComponenteIngresosPanel({
   }
 
   return (
-    <section className="space-y-4">
+    <section id="ingreso" className="scroll-mt-24 space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h2 className="text-base font-semibold text-zinc-900 dark:text-zinc-50">
@@ -105,7 +117,7 @@ export function ComponenteIngresosPanel({
       {showForm && catalogo.length > 0 ? (
         <form
           onSubmit={registrar}
-          className="grid gap-3 rounded-2xl border border-emerald-200/60 bg-emerald-50/40 p-4 dark:border-emerald-900/40 dark:bg-emerald-950/20 sm:grid-cols-2"
+          className={`grid grid-cols-1 gap-3 sm:grid-cols-2 ${formCardClass} border-emerald-200/60 bg-emerald-50/40 dark:border-emerald-900/40 dark:bg-emerald-950/20`}
         >
           <div className="sm:col-span-2">
             <label className="text-xs font-medium">Componente</label>
@@ -113,7 +125,7 @@ export function ComponenteIngresosPanel({
               required
               value={componenteId}
               onChange={(e) => setComponenteId(e.target.value)}
-              className={`mt-1 ${inputClass}`}
+              className={`mt-1 ${selectClass}`}
             >
               <option value="">Seleccionar…</option>
               {catalogo.map((c) => (
@@ -169,11 +181,11 @@ export function ComponenteIngresosPanel({
             />
           </div>
           {formError ? <p className="text-sm text-red-600 sm:col-span-2">{formError}</p> : null}
-          <div className="sm:col-span-2">
+          <div className={`sm:col-span-2 ${formStickyFooterClass}`}>
             <button
               type="submit"
               disabled={saving}
-              className="rounded-xl bg-emerald-800 px-4 py-2.5 text-sm font-medium text-white disabled:opacity-60"
+              className={`${btnPrimary} !bg-emerald-800 hover:!bg-emerald-900`}
             >
               {saving ? "Guardando…" : "Registrar ingreso"}
             </button>
@@ -210,6 +222,7 @@ function IngresosTable({ rows }: { rows: PackagingComponenteIngreso[] }) {
             <th className="px-4 py-3 font-medium tabular-nums text-right">Stock</th>
             <th className="px-4 py-3 font-medium tabular-nums text-right">ARS</th>
             <th className="px-4 py-3 font-medium tabular-nums text-right">USD</th>
+            <th className="px-4 py-3 font-medium tabular-nums text-right">Precio por U</th>
             <th className="px-4 py-3 font-medium">Origen</th>
             <th className="px-4 py-3 font-medium">Notas</th>
           </tr>
@@ -230,6 +243,20 @@ function IngresosTable({ rows }: { rows: PackagingComponenteIngreso[] }) {
               </td>
               <td className="px-4 py-3 text-right tabular-nums">
                 {formatMoneda(row.precio_compra_usd, "USD")}
+              </td>
+              <td className="px-4 py-3 text-right text-xs tabular-nums text-zinc-600">
+                <div>
+                  {formatMoneda(
+                    precioPorUnidad(row.precio_compra_ars, row.cantidad),
+                    "ARS",
+                  )}
+                </div>
+                <div className="text-zinc-400">
+                  {formatMoneda(
+                    precioPorUnidad(row.precio_compra_usd, row.cantidad),
+                    "USD",
+                  )}
+                </div>
               </td>
               <td className="px-4 py-3 text-xs text-zinc-600">
                 {LABEL_ORIGEN_INGRESO[row.origen] ?? row.origen}

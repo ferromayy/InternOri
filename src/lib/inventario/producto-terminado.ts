@@ -9,6 +9,8 @@ export type RequisitoProductoTerminado = {
   tipo: string;
   cantidad_stock: number;
   cantidad_por_unidad: number;
+  precio_compra_ars: number | null;
+  precio_compra_usd: number | null;
 };
 
 export type FormatoProductoTerminado = {
@@ -28,6 +30,9 @@ export type FormatoProductoTerminado = {
 export type LoteProductoTerminado = {
   codigo: string;
   varietal: string;
+  kg_iniciales_gr: number;
+  costo_total_ars: number | null;
+  costo_total_usd: number | null;
   formatos: FormatoProductoTerminado[];
 };
 

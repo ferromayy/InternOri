@@ -1,3 +1,4 @@
+import { costoTotalStock, costoUnitarioFormato } from "@/lib/inventario/costo-stock";
 import { labelComponentePackaging } from "@/lib/inventario/packaging";
 import type { FormatoProductoTerminado, LoteProductoTerminado } from "@/lib/inventario/producto-terminado";
 
@@ -17,6 +18,10 @@ export type CapacidadSku = {
   puede_producir: number;
   cuello_botella: CuelloBotella | null;
   unidades_producidas: number;
+  costo_total_ars: number | null;
+  costo_total_usd: number | null;
+  costo_por_unidad_ars: number | null;
+  costo_por_unidad_usd: number | null;
 };
 
 export function calcularCapacidadFormato(formato: FormatoProductoTerminado): {
@@ -63,6 +68,8 @@ export function buildCapacidadSkus(lotes: LoteProductoTerminado[]): CapacidadSku
   for (const lote of lotes) {
     for (const formato of lote.formatos) {
       const { max, cuello } = calcularCapacidadFormato(formato);
+      const unitario = costoUnitarioFormato(lote, formato);
+      const costoStock = costoTotalStock(formato.unidades_producidas, unitario);
       skus.push({
         codigo: lote.codigo,
         varietal: lote.varietal,
@@ -73,6 +80,10 @@ export function buildCapacidadSkus(lotes: LoteProductoTerminado[]): CapacidadSku
         puede_producir: max,
         cuello_botella: cuello,
         unidades_producidas: formato.unidades_producidas,
+        costo_total_ars: costoStock.ars,
+        costo_total_usd: costoStock.usd,
+        costo_por_unidad_ars: unitario.ars,
+        costo_por_unidad_usd: unitario.usd,
       });
     }
   }

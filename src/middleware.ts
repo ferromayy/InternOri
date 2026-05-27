@@ -1,4 +1,5 @@
 import { verifySessionCookie } from "@/lib/auth";
+import { safeRedirectPath } from "@/lib/auth-redirect";
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
@@ -10,7 +11,9 @@ export async function middleware(request: NextRequest) {
 
   if (pathname === "/login") {
     if (session) {
-      return NextResponse.redirect(new URL("/dashboard", request.url));
+      const from = request.nextUrl.searchParams.get("from");
+      const dest = safeRedirectPath(from);
+      return NextResponse.redirect(new URL(dest, request.url));
     }
     return NextResponse.next();
   }
@@ -21,8 +24,9 @@ export async function middleware(request: NextRequest) {
 
   if (!session) {
     const loginUrl = new URL("/login", request.url);
+    const returnPath = `${pathname}${request.nextUrl.search}${request.nextUrl.hash}`;
     if (pathname !== "/") {
-      loginUrl.searchParams.set("from", pathname);
+      loginUrl.searchParams.set("from", returnPath);
     }
     return NextResponse.redirect(loginUrl);
   }

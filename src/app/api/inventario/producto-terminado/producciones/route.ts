@@ -9,6 +9,7 @@ const SELECT = `
   kg_tostado_usado_gr,
   precio_venta_ars,
   precio_venta_usd,
+  detalle,
   origen,
   created_at,
   cafe_verde_formatos_venta (

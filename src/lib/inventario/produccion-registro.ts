@@ -18,6 +18,7 @@ export type ProduccionRegistro = {
   kg_tostado_usado_gr: number;
   precio_venta_ars: number | null;
   precio_venta_usd: number | null;
+  detalle: string | null;
   origen: OrigenProduccionRegistro;
   created_at: string;
   cafe_verde_formatos_venta: {
@@ -49,6 +50,7 @@ export async function registrarProduccionHistorial(
     kg_tostado_usado_gr: number;
     origen: OrigenProduccionRegistro;
     precios?: PreciosVentaInput;
+    detalle?: string | null;
     consumos: ConsumoProduccionInput[];
   },
 ): Promise<{ ok: true } | { error: string }> {
@@ -61,6 +63,7 @@ export async function registrarProduccionHistorial(
       kg_tostado_usado_gr: params.kg_tostado_usado_gr,
       precio_venta_ars: params.precios?.precio_venta_ars ?? null,
       precio_venta_usd: params.precios?.precio_venta_usd ?? null,
+      detalle: params.detalle ?? null,
       origen: params.origen,
     })
     .select("id")

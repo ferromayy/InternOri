@@ -1,5 +1,11 @@
 "use client";
 
+import {
+  btnPrimary,
+  formCardClass,
+  formStickyFooterClass,
+  inputClass,
+} from "@/components/inventario/ui/form-styles";
 import { FORMATOS_VENTA, type FormatoVenta } from "@/lib/inventario/formato-venta";
 import { useRouter } from "next/navigation";
 import { FormEvent, useState } from "react";
@@ -16,10 +22,8 @@ const empty = {
   kg_iniciales_gr: "",
   costo_total_ars: "",
   costo_total_usd: "",
+  detalle: "",
 };
-
-const inputClass =
-  "w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 outline-none focus:ring-2 focus:ring-amber-500/40 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-50";
 
 export function CafeVerdeForm() {
   const router = useRouter();
@@ -55,6 +59,7 @@ export function CafeVerdeForm() {
           kg_iniciales_gr: Number(form.kg_iniciales_gr),
           costo_total_ars: form.costo_total_ars === "" ? null : Number(form.costo_total_ars),
           costo_total_usd: form.costo_total_usd === "" ? null : Number(form.costo_total_usd),
+          detalle: form.detalle,
         }),
       });
 
@@ -81,7 +86,7 @@ export function CafeVerdeForm() {
   }
 
   return (
-    <form onSubmit={onSubmit} className="space-y-5 rounded-xl border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-900">
+    <form onSubmit={onSubmit} className={formCardClass}>
       <div>
         <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">Nuevo ingreso</h2>
         <p className="mt-1 text-sm text-zinc-500">
@@ -89,7 +94,7 @@ export function CafeVerdeForm() {
         </p>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <Field label="ID" id="codigo">
           <input
             id="codigo"
@@ -187,7 +192,7 @@ export function CafeVerdeForm() {
         <p className="text-xs text-zinc-500">
           Costo total pagado por este ingreso. Opcional; podés completar solo una moneda.
         </p>
-        <div className="grid gap-4 sm:grid-cols-2">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <Field label="Pesos (ARS)" id="costo_total_ars">
             <input
               id="costo_total_ars"
@@ -214,6 +219,16 @@ export function CafeVerdeForm() {
           </Field>
         </div>
       </fieldset>
+
+      <Field label="Detalle (opcional)" id="detalle">
+        <input
+          id="detalle"
+          value={form.detalle}
+          onChange={(e) => update("detalle", e.target.value)}
+          placeholder="Ej: Proveedor, factura, notas del lote…"
+          className={inputClass}
+        />
+      </Field>
 
       <fieldset className="space-y-3">
         <legend className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
@@ -251,13 +266,15 @@ export function CafeVerdeForm() {
         </p>
       ) : null}
 
-      <button
-        type="submit"
-        disabled={loading || formatosVenta.length === 0}
-        className="rounded-lg bg-amber-700 px-4 py-2.5 text-sm font-medium text-white hover:bg-amber-800 disabled:opacity-60"
-      >
-        {loading ? "Guardando…" : "Registrar café verde"}
-      </button>
+      <div className={formStickyFooterClass}>
+        <button
+          type="submit"
+          disabled={loading || formatosVenta.length === 0}
+          className={btnPrimary}
+        >
+          {loading ? "Guardando…" : "Registrar café verde"}
+        </button>
+      </div>
     </form>
   );
 }

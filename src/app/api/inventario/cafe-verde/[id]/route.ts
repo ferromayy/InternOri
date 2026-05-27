@@ -17,6 +17,7 @@ const CAFE_VERDE_SELECT = `
   kg_actuales_gr,
   costo_total_ars,
   costo_total_usd,
+  detalle,
   created_at,
   deleted_at,
   cafe_verde_formatos_venta ( formato_venta )

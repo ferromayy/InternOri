@@ -1,7 +1,7 @@
 "use client";
 
 import { FORMATOS_VENTA, labelsFormatosVenta, type FormatoVenta } from "@/lib/inventario/formato-venta";
-import { formatMoneda } from "@/lib/inventario/moneda";
+import { formatMoneda, precioPorKg } from "@/lib/inventario/moneda";
 import type { CafeVerde } from "@/types/inventario";
 import { useRouter } from "next/navigation";
 import { FormEvent, useCallback, useEffect, useState } from "react";
@@ -109,9 +109,11 @@ export function CafeVerdeInventario() {
                 <th className="px-4 py-3">Varietal</th>
                 <th className="px-4 py-3">Origen</th>
                 <th className="px-4 py-3">Ingreso</th>
+                <th className="px-4 py-3 text-right">Kg iniciales</th>
                 <th className="px-4 py-3 text-right">Kg actuales</th>
                 <th className="px-4 py-3 text-right">Compra ARS</th>
                 <th className="px-4 py-3 text-right">Compra USD</th>
+                <th className="px-4 py-3 text-right">Precio por kg</th>
                 <th className="px-4 py-3">Acciones</th>
               </tr>
             </thead>
@@ -126,7 +128,10 @@ export function CafeVerdeInventario() {
                   <td className="px-4 py-3">{row.varietal}</td>
                   <td className="px-4 py-3">{row.origen}</td>
                   <td className="px-4 py-3">{formatDate(row.fecha_ingreso)}</td>
-                  <td className="px-4 py-3 text-right tabular-nums font-medium text-amber-800">
+                  <td className="px-4 py-3 text-right tabular-nums text-zinc-600">
+                    {formatGr(row.kg_iniciales_gr)}
+                  </td>
+                  <td className="px-4 py-3 text-right tabular-nums font-medium text-amber-800 dark:text-amber-300">
                     {formatGr(row.kg_actuales_gr)}
                   </td>
                   <td className="px-4 py-3 text-right tabular-nums text-zinc-600">
@@ -134,6 +139,12 @@ export function CafeVerdeInventario() {
                   </td>
                   <td className="px-4 py-3 text-right tabular-nums text-zinc-600">
                     {formatMoneda(row.costo_total_usd, "USD")}
+                  </td>
+                  <td className="px-4 py-3 text-right text-xs tabular-nums text-zinc-600">
+                    <div>{formatMoneda(precioPorKg(row.costo_total_ars, row.kg_iniciales_gr), "ARS")}</div>
+                    <div className="text-zinc-400">
+                      {formatMoneda(precioPorKg(row.costo_total_usd, row.kg_iniciales_gr), "USD")}
+                    </div>
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex flex-wrap gap-2">
@@ -211,6 +222,7 @@ function EditarCafeVerdeModal({
       row.costo_total_ars != null ? String(row.costo_total_ars) : "",
     costo_total_usd:
       row.costo_total_usd != null ? String(row.costo_total_usd) : "",
+    detalle: row.detalle ?? "",
   });
   const [formatosVenta, setFormatosVenta] = useState<FormatoVenta[]>(row.formatos_venta);
   const [formError, setFormError] = useState<string | null>(null);
@@ -312,6 +324,15 @@ function EditarCafeVerdeModal({
             </div>
             </div>
           </fieldset>
+          <div>
+            <label className="text-xs font-medium">Detalle (opcional)</label>
+            <input
+              value={form.detalle}
+              onChange={(e) => setForm((f) => ({ ...f, detalle: e.target.value }))}
+              placeholder="Ej: Proveedor, factura…"
+              className={`mt-1 ${inputClass}`}
+            />
+          </div>
           <fieldset>
             <legend className="text-xs font-medium">Formatos de venta</legend>
             <div className="mt-2 flex flex-wrap gap-2">

@@ -11,10 +11,14 @@ import {
 } from "@/lib/inventario/producto-terminado-venta";
 import { useProductoTerminadoLotes } from "@/lib/hooks/use-producto-terminado-lotes";
 import { useVentasHistorial } from "@/lib/hooks/use-ventas-historial";
+import {
+  btnPrimary,
+  formCardClass,
+  formStickyFooterClass,
+  inputClass,
+  selectClass,
+} from "@/components/inventario/ui/form-styles";
 import { FormEvent, useMemo, useState } from "react";
-
-const inputClass =
-  "w-full rounded-xl border border-zinc-300 bg-white px-4 py-3 text-base dark:border-zinc-700 dark:bg-zinc-950";
 
 function formatFechaDisplay(fecha: string) {
   return new Date(fecha + "T12:00:00").toLocaleDateString("es-AR");
@@ -84,7 +88,7 @@ export function StockVentaPanel() {
 
   return (
     <div className="space-y-8">
-      <section className="space-y-4">
+      <section id="venta" className="scroll-mt-24 space-y-4">
         <div>
           <h2 className="text-base font-semibold text-zinc-900 dark:text-zinc-50">
             Registrar venta / salida de stock
@@ -101,7 +105,7 @@ export function StockVentaPanel() {
         ) : (
           <form
             onSubmit={registrarVenta}
-            className="space-y-4 rounded-2xl border border-amber-200/70 bg-amber-50/30 p-5 dark:border-amber-900/40 dark:bg-amber-950/20"
+            className={`${formCardClass} border-amber-200/70 bg-amber-50/30 dark:border-amber-900/40 dark:bg-amber-950/20`}
           >
             <div>
               <label className="text-xs font-medium uppercase tracking-wide text-zinc-500">
@@ -111,7 +115,7 @@ export function StockVentaPanel() {
                 required
                 value={formatoId}
                 onChange={(e) => setFormatoId(e.target.value)}
-                className={`mt-2 ${inputClass}`}
+                className={`mt-2 ${selectClass}`}
               >
                 <option value="">Seleccionar…</option>
                 {conStock.map((s) => (
@@ -122,7 +126,7 @@ export function StockVentaPanel() {
               </select>
             </div>
 
-            <div className="grid gap-4 sm:grid-cols-2">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div>
                 <label className="text-xs font-medium uppercase tracking-wide text-zinc-500">
                   Cantidad de salida
@@ -164,7 +168,7 @@ export function StockVentaPanel() {
                   required
                   value={tipoCliente}
                   onChange={(e) => setTipoCliente(e.target.value)}
-                  className={`mt-2 ${inputClass}`}
+                  className={`mt-2 ${selectClass}`}
                 >
                   {TIPOS_CLIENTE_VENTA.map((t) => (
                     <option key={t.value} value={t.value}>
@@ -201,13 +205,15 @@ export function StockVentaPanel() {
             {formError ? <p className="text-sm text-red-600">{formError}</p> : null}
             {formOk ? <p className="text-sm text-emerald-800 dark:text-emerald-200">{formOk}</p> : null}
 
-            <button
-              type="submit"
-              disabled={enviando}
-              className="w-full rounded-xl bg-amber-800 py-3.5 text-sm font-medium text-white disabled:opacity-60"
-            >
-              {enviando ? "Registrando…" : "Registrar salida por venta"}
-            </button>
+            <div className={formStickyFooterClass}>
+              <button
+                type="submit"
+                disabled={enviando}
+                className={`${btnPrimary} !bg-amber-800 hover:!bg-amber-900`}
+              >
+                {enviando ? "Registrando…" : "Registrar salida por venta"}
+              </button>
+            </div>
           </form>
         )}
       </section>

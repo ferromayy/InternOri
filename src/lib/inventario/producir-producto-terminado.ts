@@ -14,6 +14,7 @@ export type PreciosVentaInput = {
 export type AplicarProduccionOptions = {
   precios?: PreciosVentaInput;
   origen?: OrigenProduccionRegistro;
+  detalle?: string | null;
 };
 
 export type FormatoProduccionRow = {
@@ -318,6 +319,7 @@ export async function aplicarProduccionFormato(
       kg_tostado_usado_gr: kgPorUnidad * delta,
       origen,
       precios: preciosRegistro,
+      detalle: options?.detalle ?? null,
       consumos: buildConsumosProduccion(formato, delta, cafeVerdeCodigo),
     });
     if ("error" in historial) return historial;
@@ -332,6 +334,7 @@ export async function producirFormato(
   delta: number,
   tostadoDisponibleOverride?: number,
   precios?: PreciosVentaInput,
+  detalle?: string | null,
 ): Promise<{ ok: true; unidades_producidas: number } | { error: string }> {
   const fetched = await fetchFormatoProduccion(supabase, cafeVerdeFormatoId);
   if ("error" in fetched) return fetched;
@@ -348,6 +351,7 @@ export async function producirFormato(
   const resultado = await aplicarProduccionFormato(supabase, fetched.formato, delta, {
     precios,
     origen: "individual",
+    detalle,
   });
   return resultado;
 }
@@ -361,6 +365,7 @@ export async function producirLote(
   supabase: Supabase,
   codigo: string,
   items: ItemProduccionLote[],
+  detalle?: string | null,
 ): Promise<
   | { ok: true; resultados: { cafe_verde_formato_id: string; unidades_producidas: number }[] }
   | { error: string }
@@ -409,6 +414,7 @@ export async function producirLote(
 
     const aplicado = await aplicarProduccionFormato(supabase, refetch.formato, item.cantidad, {
       origen: "lote",
+      detalle,
     });
     if ("error" in aplicado) return aplicado;
 

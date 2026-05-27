@@ -123,6 +123,7 @@ function ProduccionesTable({ rows }: { rows: ProduccionRegistro[] }) {
             <th className="px-4 py-3 font-medium tabular-nums text-right">Venta ARS</th>
             <th className="px-4 py-3 font-medium tabular-nums text-right">Venta USD</th>
             <th className="px-4 py-3 font-medium">Origen</th>
+            <th className="px-4 py-3 font-medium">Detalle</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-zinc-50 dark:divide-zinc-800/80">
@@ -148,9 +149,15 @@ function ProduccionesTable({ rows }: { rows: ProduccionRegistro[] }) {
                 <td className="px-4 py-3 text-xs text-zinc-600">
                   {LABEL_ORIGEN_PRODUCCION[row.origen] ?? row.origen}
                 </td>
+                <td
+                  className="max-w-[140px] truncate px-4 py-3 text-xs text-zinc-500"
+                  title={row.detalle ?? ""}
+                >
+                  {row.detalle ?? "—"}
+                </td>
               </tr>
               <tr className="bg-zinc-50/90 dark:bg-zinc-950/50">
-                <td colSpan={7} className="px-4 py-3">
+                <td colSpan={8} className="px-4 py-3">
                   <p className="mb-2 text-[10px] font-medium uppercase tracking-wide text-zinc-500">
                     Insumos consumidos
                   </p>

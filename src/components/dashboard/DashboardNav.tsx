@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 
 const mainSections = [
   { href: "/dashboard", label: "Resumen", exact: true },
+  { href: "/dashboard/acceso-rapido", label: "Acceso rápido (móvil)", exact: true },
   {
     href: "/dashboard/inventario",
     label: "Inventario productivo",
@@ -48,15 +49,17 @@ function NavLink({
   href,
   label,
   active,
+  mobile = false,
 }: {
   href: string;
   label: string;
   active: boolean;
+  mobile?: boolean;
 }) {
   return (
     <Link
       href={href}
-      className={`block rounded-lg px-3 py-2 text-sm transition ${
+      className={`${mobile ? "flex min-h-[44px] items-center rounded-lg px-3 py-3 text-sm transition" : "block rounded-lg px-3 py-2 text-sm transition"} ${
         active
           ? "bg-zinc-900 font-medium text-white dark:bg-zinc-100 dark:text-zinc-900"
           : "text-zinc-600 hover:bg-zinc-100 dark:text-zinc-400 dark:hover:bg-zinc-800"
@@ -67,9 +70,14 @@ function NavLink({
   );
 }
 
-export function DashboardNav() {
+export function DashboardNav({ mobile = false }: { mobile?: boolean }) {
   const pathname = usePathname();
   const inInventario = pathname.startsWith("/dashboard/inventario");
+  const showInventarioTree = mobile || inInventario;
+
+  const linkClass = mobile
+    ? "flex min-h-[44px] items-center rounded-lg px-3 py-3 text-sm transition"
+    : "block rounded-lg px-3 py-2 text-sm transition";
 
   return (
     <nav className="flex flex-col gap-6">
@@ -88,7 +96,7 @@ export function DashboardNav() {
               <li key={item.href}>
                 <Link
                   href={item.href}
-                  className={`block rounded-lg px-3 py-2 text-sm transition ${
+                  className={`${linkClass} ${
                     active
                       ? "bg-amber-100 font-medium text-amber-950 dark:bg-amber-950/50 dark:text-amber-100"
                       : "text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-100"
@@ -102,7 +110,7 @@ export function DashboardNav() {
         </ul>
       </div>
 
-      {inInventario ? (
+      {showInventarioTree ? (
         <div className="space-y-5">
           <div>
             <p className="mb-2 px-3 text-xs font-semibold uppercase tracking-wider text-zinc-500">
@@ -115,6 +123,7 @@ export function DashboardNav() {
                     href={item.href}
                     label={item.label}
                     active={isActive(pathname, item.href)}
+                    mobile={mobile}
                   />
                 </li>
               ))}
@@ -132,6 +141,7 @@ export function DashboardNav() {
                     href={item.href}
                     label={item.label}
                     active={isActive(pathname, item.prefix)}
+                    mobile={mobile}
                   />
                 </li>
               ))}
@@ -149,6 +159,7 @@ export function DashboardNav() {
                     href={item.href}
                     label={item.label}
                     active={isActive(pathname, item.prefix)}
+                    mobile={mobile}
                   />
                 </li>
               ))}

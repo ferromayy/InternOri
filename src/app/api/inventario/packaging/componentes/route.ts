@@ -7,7 +7,7 @@ export async function GET() {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("packaging_componente")
-    .select("id, componente, tipo, cantidad, precio_compra_ars, precio_compra_usd")
+    .select("id, componente, tipo, cantidad, precio_compra_ars, precio_compra_usd, detalle")
     .order("componente", { ascending: true })
     .order("tipo", { ascending: true });
 
@@ -36,7 +36,7 @@ export async function POST(request: Request) {
   const { data, error } = await supabase
     .from("packaging_componente")
     .insert({ ...insertBase, cantidad: 0 })
-    .select("id, componente, tipo, cantidad, precio_compra_ars, precio_compra_usd")
+    .select("id, componente, tipo, cantidad, precio_compra_ars, precio_compra_usd, detalle")
     .single();
 
   if (error) {

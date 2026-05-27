@@ -1,4 +1,4 @@
-import { validateCafeTostadoUpdate } from "@/lib/inventario/cafe-tostado";
+import { applyCafeTostadoPatch, validateCafeTostadoUpdate } from "@/lib/inventario/cafe-tostado";
 import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
 
@@ -20,44 +20,21 @@ export async function PATCH(
   }
 
   const supabase = await createClient();
+  const resultado = await applyCafeTostadoPatch(supabase, id, parsed.data);
 
-  const { data: existing, error: fetchError } = await supabase
-    .from("cafe_tostado")
-    .select("id, deleted_at")
-    .eq("id", id)
-    .maybeSingle();
-
-  if (fetchError) {
-    return NextResponse.json({ error: fetchError.message }, { status: 502 });
+  if ("error" in resultado) {
+    const status =
+      resultado.error === "Registro no encontrado"
+        ? 404
+        : resultado.error.includes("producción") ||
+            resultado.error.includes("disponibles") ||
+            resultado.error.includes("mayor")
+          ? 400
+          : 502;
+    return NextResponse.json({ error: resultado.error }, { status });
   }
 
-  if (!existing || existing.deleted_at) {
-    return NextResponse.json({ error: "Registro no encontrado" }, { status: 404 });
-  }
-
-  const { error } = await supabase
-    .from("cafe_tostado")
-    .update(parsed.data)
-    .eq("id", id)
-    .is("deleted_at", null);
-
-  if (error) {
-    return NextResponse.json({ error: error.message }, { status: 502 });
-  }
-
-  const { data, error: readError } = await supabase
-    .from("cafe_tostado")
-    .select(
-      "id, codigo, cafe_verde_codigo, fecha_tueste, perfil, kg_verde_tostado_gr, kg_despues_tostar_gr, merma_gr, kg_vendidos_gr, kg_existentes_gr, created_at, deleted_at",
-    )
-    .eq("id", id)
-    .single();
-
-  if (readError) {
-    return NextResponse.json({ error: readError.message }, { status: 502 });
-  }
-
-  return NextResponse.json({ ok: true, item: data });
+  return NextResponse.json({ ok: true, item: resultado.item });
 }
 
 export async function DELETE(
