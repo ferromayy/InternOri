@@ -5,6 +5,7 @@ export const COMPONENTES_PACKAGING = [
   { value: "caja", label: "Caja" },
   { value: "sobre", label: "Sobre" },
   { value: "tarjeta", label: "Tarjeta" },
+  { value: "otro", label: "Otro" },
 ] as const;
 
 export type ComponentePackaging = (typeof COMPONENTES_PACKAGING)[number]["value"];

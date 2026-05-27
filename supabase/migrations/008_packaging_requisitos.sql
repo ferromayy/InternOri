@@ -10,7 +10,7 @@ create table if not exists public.packaging_requisito (
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   constraint packaging_requisito_componente_check
-    check (componente in ('sticker', 'bolsa_cafe', 'bolsa_sosten', 'caja', 'sobre', 'tarjeta')),
+    check (componente in ('sticker', 'bolsa_cafe', 'bolsa_sosten', 'caja', 'sobre', 'tarjeta', 'otro')),
   constraint packaging_requisito_unique unique (cafe_verde_formato_id, componente, tipo)
 );
 

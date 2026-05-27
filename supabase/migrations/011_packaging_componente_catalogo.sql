@@ -8,7 +8,7 @@ create table if not exists public.packaging_componente (
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   constraint packaging_componente_componente_check
-    check (componente in ('sticker', 'bolsa_cafe', 'bolsa_sosten', 'caja', 'sobre', 'tarjeta')),
+    check (componente in ('sticker', 'bolsa_cafe', 'bolsa_sosten', 'caja', 'sobre', 'tarjeta', 'otro')),
   constraint packaging_componente_unique unique (componente, tipo)
 );
 
