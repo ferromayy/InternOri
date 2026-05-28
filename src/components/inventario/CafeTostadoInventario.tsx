@@ -21,6 +21,7 @@ function formatDate(value: string) {
 export function CafeTostadoInventario() {
   const router = useRouter();
   const [items, setItems] = useState<CafeTostado[]>([]);
+  const [alogCount, setAlogCount] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [editing, setEditing] = useState<CafeTostado | null>(null);
@@ -37,7 +38,23 @@ export function CafeTostadoInventario() {
         setError(data.error ?? "No se pudo cargar");
         return;
       }
-      setItems(data.items ?? []);
+      const rows: CafeTostado[] = data.items ?? [];
+      setItems(rows);
+
+      // Cargar conteo de archivos .alog por tueste (best effort)
+      const counts: Record<string, number> = {};
+      await Promise.all(
+        rows.map(async (r) => {
+          try {
+            const fr = await fetch(`/api/inventario/cafe-tostado/${r.id}/alog`);
+            const fd = await fr.json();
+            if (fr.ok) counts[r.id] = Array.isArray(fd.items) ? fd.items.length : 0;
+          } catch {
+            // ignore
+          }
+        }),
+      );
+      setAlogCount(counts);
     } catch {
       setError("Error de red");
     } finally {
@@ -110,6 +127,7 @@ export function CafeTostadoInventario() {
                 <th className="px-4 py-3 text-right">Merma (gr)</th>
                 <th className="px-4 py-3 text-right">Kg vendidos</th>
                 <th className="px-4 py-3 text-right">Kg existentes</th>
+                <th className="px-4 py-3">Archivos</th>
                 <th className="px-4 py-3">Acciones</th>
               </tr>
             </thead>
@@ -134,6 +152,13 @@ export function CafeTostadoInventario() {
                   </td>
                   <td className="px-4 py-3 text-right tabular-nums font-medium">
                     {formatGr(row.kg_existentes_gr)}
+                  </td>
+                  <td className="px-4 py-3">
+                    {alogCount[row.id] ? (
+                      <DownloadAlogButton tostadoId={row.id} count={alogCount[row.id]} />
+                    ) : (
+                      <span className="text-xs text-zinc-500">—</span>
+                    )}
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex flex-wrap gap-2">
@@ -184,6 +209,60 @@ export function CafeTostadoInventario() {
         />
       ) : null}
     </>
+  );
+}
+
+function DownloadAlogButton({ tostadoId, count }: { tostadoId: string; count: number }) {
+  const [loading, setLoading] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+
+  async function downloadLatest() {
+    setErr(null);
+    setLoading(true);
+    try {
+      const listRes = await fetch(`/api/inventario/cafe-tostado/${tostadoId}/alog`);
+      const listData = await listRes.json();
+      if (!listRes.ok) {
+        setErr(listData.error ?? "No se pudo cargar archivos");
+        return;
+      }
+      const first = Array.isArray(listData.items) ? listData.items[0] : null;
+      if (!first?.id) {
+        setErr("No hay archivos");
+        return;
+      }
+
+      const urlRes = await fetch(
+        `/api/inventario/cafe-tostado/${tostadoId}/alog/${first.id}/download`,
+        { method: "POST" },
+      );
+      const urlData = await urlRes.json();
+      if (!urlRes.ok) {
+        setErr(urlData.error ?? "No se pudo generar descarga");
+        return;
+      }
+
+      window.open(urlData.url, "_blank", "noopener,noreferrer");
+    } catch {
+      setErr("Error de red");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <div className="space-y-1">
+      <button
+        type="button"
+        className={btnSecondary}
+        disabled={loading}
+        onClick={downloadLatest}
+        title="Descarga el último .alog subido"
+      >
+        {loading ? "Generando…" : `Descargar (${count})`}
+      </button>
+      {err ? <p className="text-xs text-red-600">{err}</p> : null}
+    </div>
   );
 }
 

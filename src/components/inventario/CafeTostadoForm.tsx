@@ -23,11 +23,13 @@ const empty = {
 export function CafeTostadoForm() {
   const router = useRouter();
   const [form, setForm] = useState(empty);
+  const [alogFiles, setAlogFiles] = useState<File[]>([]);
   const [lotesVerde, setLotesVerde] = useState<CafeVerdeParaTostado[]>([]);
   const [loadingLotes, setLoadingLotes] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [uploading, setUploading] = useState(false);
 
   const loteSeleccionado = lotesVerde.find((l) => l.codigo === form.cafe_verde_codigo);
 
@@ -76,11 +78,34 @@ export function CafeTostadoForm() {
       }
 
       const ref = form.cafe_verde_codigo;
+      const selected = alogFiles;
       setForm(empty);
+      setAlogFiles([]);
       setSuccess(
         `Tueste ${data.codigo} registrado · café verde ${ref} · merma ${data.merma_gr} g`,
       );
       router.refresh();
+
+      if (selected.length > 0) {
+        setUploading(true);
+        const fd = new FormData();
+        for (const f of selected) fd.append("files", f);
+        const upRes = await fetch(`/api/inventario/cafe-tostado/${data.id}/alog`, {
+          method: "POST",
+          body: fd,
+        });
+        const upData = await upRes.json();
+        if (!upRes.ok) {
+          setError(upData.error ?? "Tueste guardado pero falló la carga de archivos .alog");
+        } else {
+          setSuccess((prev) =>
+            prev
+              ? `${prev} · ${selected.length} archivo(s) .alog cargado(s)`
+              : `${selected.length} archivo(s) .alog cargado(s)`,
+          );
+        }
+        setUploading(false);
+      }
 
       const lotesRes = await fetch("/api/inventario/cafe-verde/para-tostado");
       const lotesData = await lotesRes.json();
@@ -89,7 +114,19 @@ export function CafeTostadoForm() {
       setError("Error de red");
     } finally {
       setLoading(false);
+      setUploading(false);
     }
+  }
+
+  function onFilesChange(files: FileList | null) {
+    if (!files) {
+      setAlogFiles([]);
+      return;
+    }
+    const list = Array.from(files);
+    const onlyAlog = list.filter((f) => f.name.toLowerCase().endsWith(".alog"));
+    const capped = onlyAlog.slice(0, 5);
+    setAlogFiles(capped);
   }
 
   return (
@@ -199,6 +236,29 @@ export function CafeTostadoForm() {
             className={inputClass}
           />
         </Field>
+
+        <div className="sm:col-span-2">
+          <label htmlFor="alog_files" className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
+            Archivos .alog (1 a 5)
+          </label>
+          <input
+            id="alog_files"
+            type="file"
+            accept=".alog"
+            multiple
+            onChange={(e) => onFilesChange(e.target.files)}
+            className={`mt-1 ${inputClass}`}
+          />
+          <p className="mt-1 text-xs text-zinc-500">
+            Se suben después de guardar el tueste. Si elegís más de 5 o archivos que no son .alog, se
+            ignoran.
+          </p>
+          {alogFiles.length > 0 ? (
+            <p className="mt-1 text-xs text-zinc-600 dark:text-zinc-400">
+              Seleccionados: {alogFiles.length} archivo(s)
+            </p>
+          ) : null}
+        </div>
       </div>
 
       {error ? (
@@ -215,10 +275,10 @@ export function CafeTostadoForm() {
       <div className={formStickyFooterClass}>
         <button
           type="submit"
-          disabled={loading || loadingLotes || lotesVerde.length === 0}
+          disabled={loading || uploading || loadingLotes || lotesVerde.length === 0}
           className={btnPrimary}
         >
-          {loading ? "Guardando…" : "Registrar café tostado"}
+          {loading || uploading ? "Guardando…" : "Registrar café tostado"}
         </button>
       </div>
     </form>
